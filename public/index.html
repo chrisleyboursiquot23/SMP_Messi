@@ -461,7 +461,7 @@
       </details>
 
       <button type="button" class="btn block" id="pvGo" disabled>Génère mon aperçu</button>
-      <p class="pv-left" id="pvLeft"><b>5</b> aperçus restants aujourd'hui · Ça prend environ une minute.</p>
+      <p class="pv-left" id="pvLeft">Ça prend environ une minute.</p>
       <p class="pv-status" id="pvStatus"></p>
 
       <div class="pv-result" id="pvResult" hidden>
@@ -592,7 +592,6 @@
   // Sends the photo + choices to /api/generate (AI). If the AI isn't reachable, renders an on-device simulation instead.
   (() => {
     const API_URL = '/api/generate';
-    const DAILY_LIMIT = 5;
     const $ = id => document.getElementById(id);
     const file = $('pvFile'), thumb = $('pvThumb'), dropIn = $('pvDropIn'), go = $('pvGo'), status = $('pvStatus'),
           left = $('pvLeft'), result = $('pvResult'), cmp = $('cmp'), before = $('cmpBefore'), after = $('cmpAfter'),
@@ -606,21 +605,7 @@
                     shape: 'rounded', pigment: 'medium', coverage: 'natural' };
     let src = null, mode = null;
 
-    // ---- daily limit (per device) ----
-    const today = () => new Date().toISOString().slice(0, 10);
-    function usedToday() {
-      try { const d = JSON.parse(localStorage.getItem('pvUse') || '{}'); return d.day === today() ? d.n : 0; } catch (e) { return 0; }
-    }
-    function markUsed() {
-      try { localStorage.setItem('pvUse', JSON.stringify({ day: today(), n: usedToday() + 1 })); } catch (e) {}
-    }
-    function remaining() { return Math.max(0, DAILY_LIMIT - usedToday()); }
-    function renderLeft() {
-      const r = remaining();
-      left.innerHTML = r > 0
-        ? '<b>' + r + '</b> aperçu' + (r > 1 ? 's' : '') + ' restant' + (r > 1 ? 's' : '') + " aujourd'hui · Ça prend environ une minute."
-        : "T'as utilisé tes aperçus pour aujourd'hui. Reviens demain, ou réserve ta consultation gratuite pour voir ton vrai plan.";
-    }
+    function renderLeft() { left.textContent = 'Ça prend environ une minute.'; }
 
     // ---- UI sync ----
     const LABELS = { shape: { rounded: 'Arrondie', straight: 'Droite', widow: 'En V' },
@@ -631,7 +616,7 @@
       hairStep.hidden = !hasHairline();
       shapeGroup.hidden = !hasHairline();
       fineSum.textContent = [hasHairline() ? LABELS.shape[state.shape] : null, LABELS.pigment[state.pigment], LABELS.coverage[state.coverage]].filter(Boolean).join(' · ');
-      go.disabled = !src || remaining() === 0;
+      go.disabled = !src;
     }
 
     // single-choice groups (cards + small buttons)
@@ -721,7 +706,6 @@
     go.addEventListener('click', async () => {
       if (!src) return;
       if (!state.areas.length) { status.textContent = 'Choisis au moins une zone à l’étape 3.'; return; }
-      if (remaining() === 0) { renderLeft(); sync(); return; }
       go.disabled = true; go.textContent = 'Génération en cours… (environ une minute)'; status.textContent = '';
       const base = scaled();
       cmp.style.aspectRatio = base.width + ' / ' + base.height;
@@ -739,9 +723,7 @@
         clearTimeout(t);
         if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
           const j = await res.json();
-          if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; markUsed(); }
-        } else if (res.status === 429) {
-          status.textContent = "T'as atteint la limite d'aperçus pour aujourd'hui.";
+          if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; }
         }
       } catch (e) {}
       if (!ok) { mode = 'sim'; renderSim(); }
