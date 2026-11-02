@@ -411,8 +411,8 @@
       <div class="pv-step">
         <div class="pv-step-h"><b><i>3</i>Où?</b><span>Choisis tout ce qui s'applique</span></div>
         <div class="pv-chips" id="pvAreas">
-          <button type="button" class="pv-chip active" data-v="hairline">Hairline</button>
-          <button type="button" class="pv-chip" data-v="temples">Tempes</button>
+          <button type="button" class="pv-chip active" data-v="hairline">Hairline (golfes)</button>
+          <button type="button" class="pv-chip" data-v="temples">Tempes (côtés)</button>
           <button type="button" class="pv-chip active" data-v="crown">Couronne</button>
           <button type="button" class="pv-chip" data-v="full">Toute la tête</button>
         </div>
@@ -689,6 +689,13 @@
         const x = cx - hw + rnd() * 2 * hw, y = rnd() * domeH;
         const ex = (x - cx) / hw, ey = (y - domeH) / domeH;
         if (ex * ex + ey * ey > 1) continue;
+        if (!state.areas.includes('full')) {
+          const u = Math.abs(x - cx) / hw, eY = edge(x);
+          const inHair = state.areas.includes('hairline') && u > 0.3 && (eY - y) < H * 0.11;   // receded corners (golfes)
+          const inCrown = state.areas.includes('crown') && u < 0.6 && y < domeH * 0.45;        // top/back
+          const inTemples = state.areas.includes('temples') && u > 0.78;                       // sides
+          if (!inHair && !inCrown && !inTemples) continue;
+        }
         const e = edge(x); if (y > e) continue;
         const p = (e - y) < feather ? (e - y) / feather : 1;
         if (rnd() > p) continue;

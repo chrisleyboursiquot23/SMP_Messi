@@ -6,12 +6,12 @@ const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
 // Allowed values for each option -> the instruction sent to the AI
 const LOOK = {
-  shaved: 'Render the head as a freshly buzzed, shaved head: any existing hair is clipped to a uniform very short length (like a 0.5 guard), and SMP covers the treated areas so the whole scalp reads as a clean, even buzz cut.',
+  shaved: 'Render the head as a freshly buzzed, shaved head: any existing hair is clipped to a uniform very short length (like a 0.5 guard). Add SMP ONLY in the treated areas listed below; the rest of the scalp keeps its natural look, just clipped short.',
   keep: 'Keep the person\'s existing hair length and style exactly as it is (do NOT shave). Add SMP pigment dots between the existing hairs in the treated areas so thin and see-through spots look dense and full.',
 };
 const AREAS = {
-  hairline: 'the front hairline zone',
-  temples: 'the temple corners (fill in the recession at the temples)',
+  hairline: 'ONLY the receded front corners of the hairline (the frontal recessions / "golfes" on the left and right of the forehead): fill them in so the front hairline becomes continuous and even. Do not add pigment anywhere else on the scalp for this area',
+  temples: 'the temple points on the sides of the head, above and in front of the ears, down toward the sideburns',
   crown: 'the crown / vertex at the top-back of the head',
   full: 'the entire scalp, front to back and side to side',
 };
@@ -75,7 +75,7 @@ async function handleGenerate(request, env) {
     'Keep the SAME person: identical face, skin tone, facial features, expression, beard, ears, clothing, background, lighting and camera angle. Do not beautify, slim, smooth or change anything except the scalp/hair area described below.',
     'SMP = thousands of tiny pigment dots that look like freshly shaved hair follicles, matching the person\'s skin tone, following the curvature and lighting of the head, with realistic skin texture still visible between the dots.',
     LOOK[look],
-    `Treated areas: ${areas.map(a => AREAS[a]).join('; ')}. Leave untreated areas as they are.`,
+    `Treated areas: ${areas.map(a => AREAS[a]).join('; ')}. IMPORTANT: modify ONLY these areas. Every other part of the scalp and hair must stay exactly as in the original photo.`,
     touchesHairline ? `${EDGE[edge]} ${POSITION[position]} ${SHAPE[shape]}` : 'Do not change the position or shape of the front hairline.',
     PIGMENT[pigment],
     COVERAGE[coverage],
