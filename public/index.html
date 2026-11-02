@@ -215,6 +215,37 @@
   .cmp input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;padding:0;border:none;-webkit-appearance:none;appearance:none;}
   #pvLine{width:100%;accent-color:var(--accent);padding:0;border:none;background:none;}
   .pv-disc,.pv-privacy{font-size:12px;color:var(--muted);text-align:center;}
+  /* ---- Preview tool v2: steps, cards, chips, fine-tune ---- */
+  .pv-step{border-top:1px solid var(--line);padding-top:18px;}
+  .pv-step:first-of-type{border-top:none;padding-top:0;}
+  .pv-step-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px;}
+  .pv-step-h b{font-family:var(--fdisplay);text-transform:uppercase;font-weight:800;font-size:16px;letter-spacing:.01em;}
+  .pv-step-h b i{font-style:normal;color:var(--accent);margin-right:6px;}
+  .pv-step-h span{font-size:12px;color:var(--muted);}
+  .pv-hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.45;}
+  .pv-cards{display:grid;gap:10px;}
+  .pv-card{text-align:left;background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:12px;padding:14px 16px;font-family:inherit;cursor:pointer;display:block;width:100%;}
+  .pv-card b{display:block;font-size:16px;font-weight:700;margin-bottom:3px;}
+  .pv-card span{font-size:13px;color:var(--muted);line-height:1.4;}
+  .pv-card:hover{border-color:var(--accent);}
+  .pv-card.active{border-color:var(--accent);background:rgba(255,122,26,.08);}
+  .pv-card.active b{color:var(--accent);}
+  .pv-chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .pv-chip{background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:999px;padding:10px 18px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+  .pv-chip:hover{border-color:var(--accent);}
+  .pv-chip.active{background:var(--accent);border-color:var(--accent);color:#1A1407;}
+  .pv-sub{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:16px 0 8px;}
+  .pv-sub small{display:block;letter-spacing:.04em;text-transform:none;font-weight:500;font-size:12px;margin-top:2px;}
+  .pv-fine{border-top:1px solid var(--line);padding-top:16px;}
+  .pv-fine summary{padding:0 28px 0 0;font-size:16px;}
+  .pv-fine summary::after{top:-6px;}
+  .pv-fine summary b{font-family:var(--fdisplay);text-transform:uppercase;font-weight:800;}
+  .pv-fine summary span{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-top:4px;}
+  .pv-fine[open] summary span{display:none;}
+  .pv-fine input[type=text]{margin-top:2px;}
+  .pv-left{font-size:13px;color:var(--muted);text-align:center;margin-top:-6px;}
+  .pv-left b{color:var(--fg);}
+  .pv-fine{border-bottom:none;}
   .calc-disc{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:16px;}
   @media(min-width:460px){ .calc-plans{grid-template-columns:repeat(4,1fr);} }
 
@@ -349,36 +380,88 @@
   <div class="wrap">
     <div class="eyebrow">Essaie-le sur toi</div>
     <h2 style="font-size:clamp(26px,6.5vw,38px)">Vois ton résultat avant de booker</h2>
-    <p class="muted" style="margin-top:12px">Ajoute une photo de ta tête, choisis ton style pis vois de quoi t'aurais l'air avec le SMP. Ça prend 30 secondes.</p>
+    <p class="muted" style="margin-top:12px">Ajoute une photo de ta tête, choisis ton look pis vois de quoi t'aurais l'air avec le SMP.</p>
     <div class="pv">
-      <label class="pv-drop">
-        <input type="file" id="pvFile" accept="image/*" hidden>
-        <div class="pv-drop-in" id="pvDropIn">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <b>Ajoute ta photo</b>
-          <span>De face, bien éclairé, cheveux courts ou rasés idéalement</span>
-        </div>
-        <img id="pvThumb" alt="Ta photo" hidden>
-      </label>
 
-      <div>
-        <div class="pv-lbl">Style de hairline</div>
-        <div class="pv-opts" data-name="style">
-          <button type="button" class="pv-opt active" data-v="natural">Naturelle<small>douce, dégradée</small></button>
-          <button type="button" class="pv-opt" data-v="sharp">Line-up<small>nette, définie</small></button>
-          <button type="button" class="pv-opt" data-v="density">Densité<small>même ligne</small></button>
+      <!-- 1 · Photo -->
+      <div class="pv-step">
+        <div class="pv-step-h"><b><i>1</i>Ta photo</b></div>
+        <label class="pv-drop">
+          <input type="file" id="pvFile" accept="image/*" hidden>
+          <div class="pv-drop-in" id="pvDropIn">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <b>Ajoute ta photo</b>
+            <span>De face ou du dessus, bien éclairé</span>
+          </div>
+          <img id="pvThumb" alt="Ta photo" hidden>
+        </label>
+        <p class="pv-hint">Meilleur résultat avec la photo originale (au moins 1000 px de large). Les captures d'écran pis les photos sauvées des réseaux sociaux sortent floues.</p>
+      </div>
+
+      <!-- 2 · Look -->
+      <div class="pv-step">
+        <div class="pv-step-h"><b><i>2</i>Quel look?</b></div>
+        <div class="pv-cards" data-name="look">
+          <button type="button" class="pv-card active" data-v="shaved"><b>Look rasé</b><span>Tête rasée avec du SMP sur les zones traitées</span></button>
+          <button type="button" class="pv-card" data-v="keep"><b>Garder mes cheveux</b><span>Ajoute de la densité pis comble les zones dégarnies, sans raser</span></button>
         </div>
       </div>
-      <div>
-        <div class="pv-lbl">Densité</div>
-        <div class="pv-opts" data-name="density">
-          <button type="button" class="pv-opt" data-v="light">Légère</button>
-          <button type="button" class="pv-opt active" data-v="medium">Moyenne</button>
+
+      <!-- 3 · Where -->
+      <div class="pv-step">
+        <div class="pv-step-h"><b><i>3</i>Où?</b><span>Choisis tout ce qui s'applique</span></div>
+        <div class="pv-chips" id="pvAreas">
+          <button type="button" class="pv-chip active" data-v="hairline">Hairline</button>
+          <button type="button" class="pv-chip" data-v="temples">Tempes</button>
+          <button type="button" class="pv-chip active" data-v="crown">Couronne</button>
+          <button type="button" class="pv-chip" data-v="full">Toute la tête</button>
+        </div>
+      </div>
+
+      <!-- 4 · Hairline style -->
+      <div class="pv-step" id="pvHairlineStep">
+        <div class="pv-step-h"><b><i>4</i>Style de hairline</b></div>
+        <div class="pv-cards" data-name="edge">
+          <button type="button" class="pv-card active" data-v="soft"><b>Douce</b><span>Naturelle, bord dégradé</span></button>
+          <button type="button" class="pv-card" data-v="sharp"><b>Nette</b><span>Line-up défini, look frais sorti du barber</span></button>
+        </div>
+        <div class="pv-sub">Position de la hairline</div>
+        <div class="pv-opts" data-name="position">
+          <button type="button" class="pv-opt active" data-v="keep">Actuelle</button>
+          <button type="button" class="pv-opt" data-v="lower">Plus basse</button>
+          <button type="button" class="pv-opt" data-v="lowest">La plus basse</button>
+        </div>
+      </div>
+
+      <!-- Fine-tune -->
+      <details class="pv-fine">
+        <summary><b>Ajustements (optionnel)</b><span id="pvFineSum">Arrondie · Pigment moyen · Couverture naturelle</span></summary>
+        <div id="pvShapeGroup">
+          <div class="pv-sub">Forme de la hairline</div>
+          <div class="pv-opts" data-name="shape">
+            <button type="button" class="pv-opt active" data-v="rounded">Arrondie</button>
+            <button type="button" class="pv-opt" data-v="straight">Droite</button>
+            <button type="button" class="pv-opt" data-v="widow">En V</button>
+          </div>
+        </div>
+        <div class="pv-sub">Pigment<small>À quel point les points sont foncés</small></div>
+        <div class="pv-opts" data-name="pigment">
+          <button type="button" class="pv-opt" data-v="light">Pâle</button>
+          <button type="button" class="pv-opt active" data-v="medium">Moyen</button>
+          <button type="button" class="pv-opt" data-v="dark">Foncé</button>
+        </div>
+        <div class="pv-sub">Couverture</div>
+        <div class="pv-opts" data-name="coverage">
+          <button type="button" class="pv-opt" data-v="subtle">Subtile</button>
+          <button type="button" class="pv-opt active" data-v="natural">Naturelle</button>
           <button type="button" class="pv-opt" data-v="full">Pleine</button>
         </div>
-      </div>
+        <div class="pv-sub">Notes</div>
+        <input type="text" id="pvNotes" maxlength="200" placeholder="Quelque chose de précis? Ex. : garder les tempes douces">
+      </details>
 
       <button type="button" class="btn block" id="pvGo" disabled>Génère mon aperçu</button>
+      <p class="pv-left" id="pvLeft"><b>5</b> aperçus restants aujourd'hui · Ça prend environ une minute.</p>
       <p class="pv-status" id="pvStatus"></p>
 
       <div class="pv-result" id="pvResult" hidden>
@@ -506,57 +589,115 @@
 <script>
   // FAQ: keep one open at a time for tidiness
   // ---- SMP preview tool ----
-  // Tries the AI endpoint first (works once hosted with the server function); otherwise renders an on-device simulation.
+  // Sends the photo + choices to /api/generate (AI). If the AI isn't reachable, renders an on-device simulation instead.
   (() => {
     const API_URL = '/api/generate';
+    const DAILY_LIMIT = 5;
     const $ = id => document.getElementById(id);
     const file = $('pvFile'), thumb = $('pvThumb'), dropIn = $('pvDropIn'), go = $('pvGo'), status = $('pvStatus'),
-          result = $('pvResult'), cmp = $('cmp'), before = $('cmpBefore'), after = $('cmpAfter'),
+          left = $('pvLeft'), result = $('pvResult'), cmp = $('cmp'), before = $('cmpBefore'), after = $('cmpAfter'),
           afterWrap = $('cmpAfterWrap'), handle = $('cmpHandle'), range = $('cmpRange'),
-          line = $('pvLine'), lineGroup = $('pvLineGroup');
+          line = $('pvLine'), lineGroup = $('pvLineGroup'), notes = $('pvNotes'),
+          hairStep = $('pvHairlineStep'), shapeGroup = $('pvShapeGroup'), fineSum = $('pvFineSum');
     const heroBtn = document.querySelector('.cta-row .btn');
     if (heroBtn) $('pvBook').href = heroBtn.href;
-    const state = { style: 'natural', density: 'medium' };
+
+    const state = { look: 'shaved', areas: ['hairline', 'crown'], edge: 'soft', position: 'keep',
+                    shape: 'rounded', pigment: 'medium', coverage: 'natural' };
     let src = null, mode = null;
 
-    document.querySelectorAll('.pv-opts').forEach(g => g.addEventListener('click', e => {
-      const b = e.target.closest('.pv-opt'); if (!b) return;
-      g.querySelectorAll('.pv-opt').forEach(x => x.classList.toggle('active', x === b));
+    // ---- daily limit (per device) ----
+    const today = () => new Date().toISOString().slice(0, 10);
+    function usedToday() {
+      try { const d = JSON.parse(localStorage.getItem('pvUse') || '{}'); return d.day === today() ? d.n : 0; } catch (e) { return 0; }
+    }
+    function markUsed() {
+      try { localStorage.setItem('pvUse', JSON.stringify({ day: today(), n: usedToday() + 1 })); } catch (e) {}
+    }
+    function remaining() { return Math.max(0, DAILY_LIMIT - usedToday()); }
+    function renderLeft() {
+      const r = remaining();
+      left.innerHTML = r > 0
+        ? '<b>' + r + '</b> aperçu' + (r > 1 ? 's' : '') + ' restant' + (r > 1 ? 's' : '') + " aujourd'hui · Ça prend environ une minute."
+        : "T'as utilisé tes aperçus pour aujourd'hui. Reviens demain, ou réserve ta consultation gratuite pour voir ton vrai plan.";
+    }
+
+    // ---- UI sync ----
+    const LABELS = { shape: { rounded: 'Arrondie', straight: 'Droite', widow: 'En V' },
+                     pigment: { light: 'Pigment pâle', medium: 'Pigment moyen', dark: 'Pigment foncé' },
+                     coverage: { subtle: 'Couverture subtile', natural: 'Couverture naturelle', full: 'Couverture pleine' } };
+    function hasHairline() { return state.areas.includes('hairline') || state.areas.includes('full'); }
+    function sync() {
+      hairStep.hidden = !hasHairline();
+      shapeGroup.hidden = !hasHairline();
+      fineSum.textContent = [hasHairline() ? LABELS.shape[state.shape] : null, LABELS.pigment[state.pigment], LABELS.coverage[state.coverage]].filter(Boolean).join(' · ');
+      go.disabled = !src || remaining() === 0;
+    }
+
+    // single-choice groups (cards + small buttons)
+    document.querySelectorAll('#apercu [data-name]').forEach(g => g.addEventListener('click', e => {
+      const b = e.target.closest('[data-v]'); if (!b) return;
+      g.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('active', x === b));
       state[g.dataset.name] = b.dataset.v;
+      sync();
       if (!result.hidden && mode === 'sim') renderSim();
     }));
+
+    // multi-choice areas ("Toute la tête" is exclusive)
+    $('pvAreas').addEventListener('click', e => {
+      const b = e.target.closest('[data-v]'); if (!b) return;
+      const v = b.dataset.v;
+      let a = state.areas.slice();
+      if (v === 'full') a = a.includes('full') ? [] : ['full'];
+      else { a = a.filter(x => x !== 'full'); a = a.includes(v) ? a.filter(x => x !== v) : a.concat(v); }
+      state.areas = a;
+      $('pvAreas').querySelectorAll('[data-v]').forEach(x => x.classList.toggle('active', a.includes(x.dataset.v)));
+      sync();
+      if (!result.hidden && mode === 'sim') renderSim();
+    });
 
     file.addEventListener('change', () => {
       const f = file.files && file.files[0]; if (!f) return;
       if (!f.type.startsWith('image/')) { status.textContent = 'Choisis un fichier image (JPG ou PNG).'; return; }
       const url = URL.createObjectURL(f);
       const im = new Image();
-      im.onload = () => { src = im; thumb.src = url; thumb.hidden = false; dropIn.hidden = true; go.disabled = false; status.textContent = ''; result.hidden = true; go.textContent = 'Génère mon aperçu'; };
+      im.onload = () => {
+        src = im; thumb.src = url; thumb.hidden = false; dropIn.hidden = true; status.textContent = ''; result.hidden = true;
+        go.textContent = 'Génère mon aperçu';
+        status.textContent = Math.max(im.naturalWidth, im.naturalHeight) < 800 ? "Ta photo est petite : le résultat risque d'être flou. Essaie la photo originale si tu l'as." : '';
+        sync();
+      };
       im.onerror = () => { status.textContent = "On n'a pas pu lire cette photo. Essaie un JPG ou PNG."; };
       im.src = url;
     });
 
     function scaled() {
-      const max = 1000, r = Math.min(1, max / Math.max(src.naturalWidth, src.naturalHeight));
+      const max = 1280, r = Math.min(1, max / Math.max(src.naturalWidth, src.naturalHeight));
       const c = document.createElement('canvas');
       c.width = Math.round(src.naturalWidth * r); c.height = Math.round(src.naturalHeight * r);
       c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
       return c;
     }
 
+    // ---- on-device simulation (fallback when the AI isn't available) ----
     function renderSim() {
       const c = scaled(), W = c.width, H = c.height, ctx = c.getContext('2d');
       let seed = 1234567; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-      const D = { light: { sp: 7, a: .42 }, medium: { sp: 5.2, a: .58 }, full: { sp: 4, a: .72 } }[state.density];
-      const k = W / 900, sp = D.sp * k;
-      const lineY = H * line.value / 100, cx = W / 2, hw = W * 0.34, domeH = lineY + H * 0.04;
+      const sp0 = { subtle: 7, natural: 5.2, full: 4 }[state.coverage];
+      const a0 = { light: .42, medium: .58, dark: .75 }[state.pigment];
+      const k = W / 900, sp = sp0 * k;
+      const keepHair = state.look === 'keep';
+      const hl = hasHairline();
+      const posOff = hl ? { keep: 0, lower: .04, lowest: .08 }[state.position] : 0;
+      const lineY = H * (line.value / 100 + posOff), cx = W / 2, hw = W * 0.34, domeH = lineY + H * 0.04;
       const edge = x => {
         const u = Math.min(1, Math.abs(x - cx) / hw);
-        if (state.style === 'sharp') return lineY - Math.pow(u, 6) * H * 0.05;
+        if (state.shape === 'straight' && hl) return lineY - Math.pow(u, 6) * H * 0.05;
+        if (state.shape === 'widow' && hl) return lineY - u * u * H * 0.07 + Math.pow(Math.max(0, 1 - u * 4), 2) * H * 0.03;
         return lineY - u * u * H * 0.07;
       };
-      const feather = state.style === 'sharp' ? H * 0.006 : state.style === 'density' ? H * 0.08 : H * 0.035;
-      const alpha = state.style === 'density' ? D.a * 0.8 : D.a;
+      const feather = !hl ? H * 0.08 : state.edge === 'sharp' ? H * 0.006 : H * 0.035;
+      const alpha = keepHair ? a0 * 0.8 : a0;
       ctx.globalCompositeOperation = 'multiply';
       const n = Math.round((2 * hw * domeH) / (sp * sp));
       for (let i = 0; i < n; i++) {
@@ -579,7 +720,9 @@
 
     go.addEventListener('click', async () => {
       if (!src) return;
-      go.disabled = true; go.textContent = 'Génération en cours…'; status.textContent = '';
+      if (!state.areas.length) { status.textContent = 'Choisis au moins une zone à l’étape 3.'; return; }
+      if (remaining() === 0) { renderLeft(); sync(); return; }
+      go.disabled = true; go.textContent = 'Génération en cours… (environ une minute)'; status.textContent = '';
       const base = scaled();
       cmp.style.aspectRatio = base.width + ' / ' + base.height;
       before.src = base.toDataURL('image/jpeg', .9);
@@ -587,21 +730,29 @@
       try {
         const blob = await new Promise(r => base.toBlob(r, 'image/jpeg', .9));
         const fd = new FormData();
-        fd.append('photo', blob, 'photo.jpg'); fd.append('style', state.style); fd.append('density', state.density);
-        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 90000);
+        fd.append('photo', blob, 'photo.jpg');
+        ['look', 'edge', 'position', 'shape', 'pigment', 'coverage'].forEach(k => fd.append(k, state[k]));
+        fd.append('areas', state.areas.join(','));
+        fd.append('notes', (notes.value || '').slice(0, 200));
+        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 150000);
         const res = await fetch(API_URL, { method: 'POST', body: fd, signal: ctrl.signal });
         clearTimeout(t);
         if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
           const j = await res.json();
-          if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; }
+          if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; markUsed(); }
+        } else if (res.status === 429) {
+          status.textContent = "T'as atteint la limite d'aperçus pour aujourd'hui.";
         }
       } catch (e) {}
       if (!ok) { mode = 'sim'; renderSim(); }
       lineGroup.hidden = mode !== 'sim';
       result.hidden = false; setPos(50);
-      go.disabled = false; go.textContent = 'Regénère mon aperçu';
+      go.textContent = 'Regénère mon aperçu';
+      renderLeft(); sync();
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
+
+    renderLeft(); sync();
   })();
 
 const faqs = document.querySelectorAll('.faq details');
