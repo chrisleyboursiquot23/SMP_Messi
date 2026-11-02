@@ -1,615 +1,81 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>RDV Barbershop SMP</title>
-<style>
-  /* Layout: single-column premium landing, dark barbershop world, orange accent, sticky book CTA */
-  :root{
-    --bg:#0E0E10;
-    --surface:#161619;
-    --surface-2:#1D1D21;
-    --line:#2C2C31;
-    --fg:#F3F1EC;
-    --muted:#9B988F;
-    --accent:#FF7A1A;
-    --accent-bright:#FF9845;
-    --good:#6FB58A;
-    --bad:#C9736A;
-    color-scheme: dark;
-    --maxw:720px;
-    --fdisplay:"Archivo","Arial Narrow",sans-serif;
-    --fbody:"Hanken Grotesk",system-ui,sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--fg);font-family:var(--fbody);line-height:1.6;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding-inline:20px;}
-  section{padding-block:56px;}
-  h1,h2,h3{font-family:var(--fdisplay);font-weight:800;line-height:1.02;letter-spacing:-.02em;text-wrap:balance;text-transform:uppercase;}
-  .eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:14px;}
-  .muted{color:var(--muted);}
-  a{color:inherit;}
+// Cloudflare Worker — serves the site from /public and handles POST /api/generate
+// Receives the client's photo + choices, asks OpenAI to render an SMP preview, returns { image: "data:image/png;base64,..." }.
+// The OpenAI key lives ONLY in Cloudflare (Settings > Variables and Secrets > OPENAI_API_KEY). Never put it in index.html.
 
-  /* ---- Buttons ---- */
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#1A1407;
-    font-family:var(--fbody);font-weight:700;font-size:16px;letter-spacing:.01em;text-decoration:none;
-    padding:16px 26px;border-radius:999px;border:none;cursor:pointer;transition:background .15s ease,transform .1s ease;}
-  .btn:hover{background:var(--accent-bright);}
-  .btn:active{transform:translateY(1px);}
-  .btn.block{display:flex;width:100%;}
-  .btn-ghost{background:transparent;color:var(--fg);border:1px solid var(--line);}
-  .btn-ghost:hover{background:var(--surface-2);}
+const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
-  /* ---- Sticky book bar ---- */
-  .stickybar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(14,14,16,.92);
-    backdrop-filter:blur(10px);border-top:1px solid var(--line);
-    padding:12px 20px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
-    display:flex;gap:12px;align-items:center;justify-content:space-between;}
-  .stickybar .lbl{font-size:13px;line-height:1.3;}
-  .stickybar .lbl b{color:var(--accent);}
-  .stickybar .btn{padding:13px 20px;font-size:15px;white-space:nowrap;}
+const STYLE = {
+  natural: 'a natural, soft, slightly irregular front hairline with a gradual feathered transition into the forehead, age-appropriate temples',
+  sharp: 'a crisp, defined, straight "line-up" front hairline with clean edges, like a fresh barber line-up',
+  density: 'NO change to the existing hairline position: only add density to thinning areas behind the current hairline',
+};
+const DENSITY = {
+  light: 'light density, a subtle soft shadow like a very short buzz cut',
+  medium: 'medium density, like a fresh 0.5 guard buzz cut',
+  full: 'full density, a strong dark shaved-head look like a fresh 1 guard buzz cut',
+};
 
-  /* ---- Hero ---- */
-  .hero{padding-top:44px;padding-bottom:40px;}
-  .brandrow{display:flex;align-items:center;gap:10px;margin-bottom:34px;}
-  .brandmark{width:30px;height:30px;border:1.5px solid var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
-  .brandname{font-family:var(--fdisplay);font-weight:800;letter-spacing:.04em;font-size:16px;text-transform:uppercase;}
-  .brandname span{color:var(--muted);font-weight:600;}
-  .hero h1{font-size:clamp(40px,11vw,66px);}
-  .hero h1 .hl{color:var(--accent);}
-  .hero p.sub{font-size:18px;color:var(--muted);margin-top:18px;max-width:30ch;}
-  .hero .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;}
-  .trust{display:flex;flex-wrap:wrap;gap:18px;margin-top:28px;font-size:13px;color:var(--muted);}
-  .trust span{display:flex;align-items:center;gap:7px;}
-  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;}
+const json = (obj, status = 200) =>
+  new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
 
-  /* ---- Before/after ---- */
-  .ba-hero{margin-top:36px;border-radius:16px;overflow:hidden;border:1px solid var(--line);}
-  .ba-hero img{display:block;width:100%;height:auto;}
-  .ba{display:grid;grid-template-columns:1fr 1fr;}
-  .ba .cell{aspect-ratio:4/5;background:
-      repeating-linear-gradient(45deg,#1b1b1f 0 14px,#19191d 14px 28px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;color:var(--muted);text-align:center;padding:16px;}
-  .ba .cell+.cell{border-left:1px solid var(--line);}
-  .ba .tag{position:absolute;top:12px;left:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
-    background:rgba(0,0,0,.55);color:var(--fg);padding:5px 10px;border-radius:999px;}
-  .ba .cell.after .tag{color:#1A1407;background:var(--accent);}
-  .ba .ph{font-size:13px;max-width:18ch;}
-  .ba .ic{opacity:.5;}
+async function handleGenerate(request, env) {
+  if (!env.OPENAI_API_KEY) return json({ error: 'Server not configured (missing OPENAI_API_KEY).' }, 500);
 
-  /* ---- What is SMP ---- */
-  .feat{display:grid;grid-template-columns:1fr;gap:14px;margin-top:30px;}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;}
-  .card .ic{color:var(--accent);margin-bottom:14px;}
-  .card h3{font-size:19px;margin-bottom:7px;}
-  .card p{font-size:15px;color:var(--muted);}
+  let form;
+  try { form = await request.formData(); } catch { return json({ error: 'Bad request.' }, 400); }
 
-  /* ---- Compare matrix: 4-col grid, fits any width, never scrolls sideways ---- */
-  .matrix{margin-top:26px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-  .cgrid{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;}
-  .cgrid>div{padding:13px 8px;border-bottom:1px solid var(--line);font-size:13px;display:flex;align-items:center;min-width:0;word-break:break-word;}
-  .cgrid>div.crit{color:var(--muted);font-weight:600;font-size:12px;padding-left:12px;}
-  .cgrid .csmp{background:rgba(255,122,26,.10);}
-  .cgrid.chead>div{font-family:var(--fdisplay);text-transform:uppercase;font-weight:800;font-size:12px;letter-spacing:.01em;padding-top:16px;padding-bottom:16px;line-height:1.1;position:relative;white-space:nowrap;}
-  .cgrid.chead .csmp{color:var(--accent);padding-top:22px;}
-  .cgrid.chead .csmp .badge{position:absolute;top:6px;left:8px;font-family:var(--fbody);font-size:8px;letter-spacing:.12em;background:var(--accent);color:#1A1407;padding:2px 6px;border-radius:999px;font-weight:700;}
-  .cgrid.chead .sm{font-family:var(--fbody);font-size:10px;color:var(--muted);font-weight:600;text-transform:none;}
-  .csmp.cell{color:var(--fg);font-weight:600;}
-  .cgrid .y{color:var(--good);font-weight:700;}
-  .cgrid .n{color:var(--bad);font-weight:700;}
-  .crow-last>div{border-bottom:none;}
+  const photo = form.get('photo');
+  const style = STYLE[form.get('style')] ? form.get('style') : 'natural';
+  const density = DENSITY[form.get('density')] ? form.get('density') : 'medium';
 
-  /* ---- Steps ---- */
-  .steps{display:grid;grid-template-columns:1fr;gap:0;margin-top:28px;counter-reset:s;}
-  .step{display:flex;gap:18px;padding:20px 0;border-bottom:1px solid var(--line);}
-  .step:last-child{border-bottom:none;}
-  .step .no{counter-increment:s;flex:none;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--accent);
-    color:var(--accent);font-family:var(--fdisplay);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;}
-  .step .no::before{content:counter(s);}
-  .step h3{font-size:18px;margin-bottom:4px;}
-  .step p{font-size:15px;color:var(--muted);}
+  if (!photo || typeof photo === 'string') return json({ error: 'No photo.' }, 400);
+  if (!/^image\//.test(photo.type || 'image/jpeg')) return json({ error: 'File must be an image.' }, 400);
+  if (photo.size > MAX_BYTES) return json({ error: 'Photo too large (max 8 MB).' }, 400);
 
-  /* ---- Price ---- */
-  .price{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:30px 26px;margin-top:26px;text-align:center;}
-  .promo-pill{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
-    background:rgba(255,122,26,.14);color:var(--accent);border:1px solid rgba(255,122,26,.4);padding:7px 14px;border-radius:999px;margin-bottom:20px;}
-  .price .amounts{display:flex;align-items:baseline;justify-content:center;gap:14px;}
-  .price .old{font-family:var(--fdisplay);font-size:30px;color:var(--muted);text-decoration:line-through;text-decoration-color:var(--bad);}
-  .price .now{font-family:var(--fdisplay);font-weight:800;font-size:64px;color:var(--accent);line-height:1;}
-  .price .now small{font-size:24px;}
-  .price .finance{font-size:15px;color:var(--muted);margin-top:14px;}
-  .price .finance b{color:var(--fg);}
-  .price .rebate-lbl{font-family:var(--fbody);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:8px;}
-  .counter{margin-top:22px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
-  .counter .bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:10px;}
-  .counter .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-bright));}
-  .counter .meta{display:flex;justify-content:space-between;font-size:13px;}
-  .counter .meta b{color:var(--accent);}
+  const prompt = [
+    'Photo edit for a scalp micropigmentation (SMP) consultation preview.',
+    'Keep the SAME person: identical face, skin tone, facial features, expression, beard, clothing, background, lighting and camera angle. Do not beautify or change anything except the scalp.',
+    'On the scalp, render realistic SMP: thousands of tiny pigment dots that look like freshly shaved hair follicles, matching the person\'s natural hair color and skin tone, following the curvature and lighting of the head.',
+    `Hairline: ${STYLE[style]}.`,
+    `Density: ${DENSITY[density]}.`,
+    'The result must look like a real, unedited photograph — no drawn lines, no text, no watermark, no plastic skin.',
+  ].join(' ');
 
-  /* ---- Testimonials ---- */
-  .quotes{display:grid;grid-template-columns:1fr;gap:14px;margin-top:26px;}
-  .quote{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;}
-  .stars{color:var(--accent);letter-spacing:2px;font-size:14px;margin-bottom:10px;}
-  .quote p{font-size:15px;font-style:italic;color:var(--fg);}
-  .quote .who{margin-top:14px;font-size:13px;color:var(--muted);font-style:normal;}
-  .ph-note{font-size:12px;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
+  const body = new FormData();
+  body.append('model', env.OPENAI_IMAGE_MODEL || 'gpt-image-2');
+  body.append('image', photo, 'photo.jpg');
+  body.append('prompt', prompt);
+  body.append('quality', env.OPENAI_IMAGE_QUALITY || 'medium');
+  body.append('size', 'auto');
+  body.append('n', '1');
 
-  /* ---- Results gallery ---- */
-  .results{display:grid;grid-template-columns:1fr;gap:14px;margin-top:26px;}
-  .result img{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--line);}
-  @media(min-width:640px){ .results{grid-template-columns:1fr 1fr;} }
-
-  /* ---- FAQ ---- */
-  .faq{margin-top:26px;border-top:1px solid var(--line);}
-  details{border-bottom:1px solid var(--line);}
-  summary{list-style:none;cursor:pointer;padding:20px 40px 20px 0;position:relative;font-weight:600;font-size:16px;}
-  summary::-webkit-details-marker{display:none;}
-  summary::after{content:"+";position:absolute;right:4px;top:18px;font-size:24px;color:var(--accent);font-weight:400;transition:transform .2s;}
-  details[open] summary::after{transform:rotate(45deg);}
-  details p{padding:0 0 20px;color:var(--muted);font-size:15px;}
-
-  /* ---- Booking ---- */
-  .book{background:linear-gradient(180deg,var(--surface),var(--bg));border:1px solid var(--line);border-radius:18px;padding:32px 26px;margin-top:10px;}
-  .book h2{font-size:clamp(28px,7vw,40px);}
-  form{display:grid;gap:14px;margin-top:22px;}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
-  input,select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);
-    padding:13px 14px;font-family:inherit;font-size:15px;}
-  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
-  .book .note{font-size:12.5px;color:var(--muted);margin-top:6px;text-align:center;}
-  .addr{font-size:14px;color:var(--muted);margin-top:4px;}
-
-  /* ---- Footer ---- */
-  footer{border-top:1px solid var(--line);padding:34px 0 120px;}
-  .foot-grid{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between;}
-  footer h4{font-family:var(--fdisplay);text-transform:uppercase;font-size:14px;letter-spacing:.04em;margin-bottom:10px;}
-  footer p,footer a{font-size:14px;color:var(--muted);text-decoration:none;display:block;margin-bottom:5px;}
-  footer a:hover{color:var(--fg);}
-  .copyline{margin-top:28px;font-size:12px;color:var(--muted);}
-
-  .divider-note{background:var(--surface-2);border:1px dashed var(--accent);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-top:14px;}
-  .divider-note b{color:var(--accent);}
-
-  /* ---- Financing calculator ---- */
-  .calc{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 22px;margin-top:16px;}
-  .calc-head{margin-bottom:22px;}
-  .calc-head p{font-size:14px;color:var(--muted);}
-  .calc-price label{display:block;font-size:13px;color:var(--muted);letter-spacing:.02em;margin-bottom:8px;}
-  .amt-show{font-family:var(--fdisplay);font-weight:800;font-size:38px;color:var(--fg);line-height:1;margin-bottom:16px;}
-  .calc input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:var(--surface-2);outline:none;padding:0;}
-  .calc input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);}
-  .calc input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--bg);}
-  .amt-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:9px;}
-  .calc-plans{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:24px;}
-  .plan{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:13px 6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
-  .plan:hover{border-color:var(--accent);color:var(--fg);}
-  .plan.active{background:var(--accent);color:#1A1407;border-color:var(--accent);}
-  .calc-out{text-align:center;margin-top:24px;padding:24px 18px;background:var(--bg);border:1px solid var(--line);border-radius:14px;}
-  .out-big{font-family:var(--fdisplay);font-weight:800;font-size:46px;color:var(--accent);line-height:1;}
-  .out-big .out-per{font-size:18px;color:var(--muted);font-weight:600;}
-  .out-sub{font-size:14px;color:var(--muted);margin-top:11px;}
-  /* ---- SMP preview tool ---- */
-  .pv{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:24px;display:grid;gap:20px;}
-  .pv-drop{display:block;border:1.5px dashed var(--line);border-radius:14px;cursor:pointer;overflow:hidden;transition:border-color .15s;margin:0;}
-  .pv-drop:hover{border-color:var(--accent);}
-  .pv-drop-in{display:flex;flex-direction:column;align-items:center;gap:6px;padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;}
-  .pv-drop-in svg{color:var(--accent);}
-  .pv-drop-in b{color:var(--fg);font-size:16px;}
-  .pv-drop img{display:block;width:100%;max-height:340px;object-fit:contain;background:#000;}
-  .pv-lbl{font-size:13px;color:var(--muted);margin-bottom:8px;letter-spacing:.02em;}
-  .pv-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-  .pv-opt{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:11px 6px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2;}
-  .pv-opt small{font-size:11px;color:var(--muted);font-weight:500;}
-  .pv-opt:hover{border-color:var(--accent);}
-  .pv-opt.active{background:var(--accent);border-color:var(--accent);color:#1A1407;}
-  .pv-opt.active small{color:#3A2410;}
-  .btn:disabled{opacity:.45;cursor:not-allowed;}
-  .pv-status{font-size:13px;color:var(--bad);text-align:center;}
-  .pv-status:empty{display:none;}
-  .pv-result{display:grid;gap:14px;}
-  .cmp{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000;user-select:none;-webkit-user-select:none;}
-  .cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-  .cmp-after{position:absolute;inset:0;}
-  .cmp-handle{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--accent);pointer-events:none;}
-  .cmp-handle::after{content:"\21C6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:var(--accent);color:#1A1407;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;}
-  .cmp .tag{position:absolute;top:10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding:5px 10px;border-radius:999px;pointer-events:none;}
-  .cmp .tag.l{left:10px;background:rgba(0,0,0,.6);color:var(--fg);}
-  .cmp .tag.r{right:10px;background:var(--accent);color:#1A1407;}
-  .cmp input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;padding:0;border:none;-webkit-appearance:none;appearance:none;}
-  #pvLine{width:100%;accent-color:var(--accent);padding:0;border:none;background:none;}
-  .pv-disc,.pv-privacy{font-size:12px;color:var(--muted);text-align:center;}
-  .calc-disc{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:16px;}
-  @media(min-width:460px){ .calc-plans{grid-template-columns:repeat(4,1fr);} }
-
-  @media(min-width:640px){
-    .feat{grid-template-columns:repeat(3,1fr);}
-    .steps{grid-template-columns:1fr 1fr;gap:0 28px;}
-    .quotes{grid-template-columns:1fr 1fr;}
-    .stickybar .lbl{font-size:14px;}
-  }
-</style>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
-
-<!-- ========== HERO ========== -->
-<section class="hero">
-  <div class="wrap">
-    <div class="brandrow">
-      <div class="brandmark">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-      </div>
-      <div class="brandname">RDV Barbershop <span>· Longueuil</span></div>
-    </div>
-
-    <div class="eyebrow">Scalp Micropigmentation (SMP)</div>
-    <h1>Retrouve ta <span class="hl">hairline</span>. Pour de bon.</h1>
-    <p class="sub">Sans greffe, sans chirurgie, sans produits à vie. Un résultat net dès la première séance — ici à Longueuil.</p>
-
-    <div class="cta-row">
-      <a href="https://booksy.com/en-ca/instant-experiences/widget/21150?instant_experiences_enabled=true&amp;ig_ix=true&amp;utm_source=ig&amp;utm_medium=social&amp;utm_content=link_in_bio&amp;fbclid=PAdGRleAU7JFZleHRuA2FlbQIxMQBwZG9mAmZkaWQWUQNb7V_wLLs_pHqX9XEuSbaf1VBi8HNydGMGYXBwX2lkDzEyNDAyNDU3NDI4NzQxNAABpwZMrF_oxXbw3YwuY1C9VBwDNrr75AZ2WACr7hyi9AstLkPtuZRnqD5gm-yU_aem_fosBoG3RGATJB50AaDtJwA" target="_blank" rel="noopener" class="btn">Réserve ta consultation gratuite</a>
-      <a href="#apercu" class="btn btn-ghost">Vois ton résultat</a>
-    </div>
-
-    <div class="trust">
-      <span><i class="dot"></i> Consultation gratuite de 15 min</span>
-      <span><i class="dot"></i> Résultat permanent</span>
-      <span><i class="dot"></i> Sans chirurgie</span>
-    </div>
-
-    <div class="ba-hero">
-      <img src="img/ba-hero.webp" alt="Transformation SMP — avant et après, RDV Barbershop" loading="eager">
-    </div>
-  </div>
-</section>
-
-<!-- ========== C'EST QUOI ========== -->
-<section id="cest-quoi">
-  <div class="wrap">
-    <div class="eyebrow">C'est quoi, au juste</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">Le SMP en 30 secondes</h2>
-    <div class="feat">
-      <div class="card">
-        <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="18" cy="8" r="1" fill="currentColor"/><circle cx="7" cy="15" r="1" fill="currentColor"/><circle cx="17" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="6" r="1" fill="currentColor"/></svg></div>
-        <h3>Des micro-points</h3>
-        <p>On dépose des micro-points de pigment dans ton cuir chevelu pour recréer l'apparence de follicules rasés. Net, dense, naturel.</p>
-      </div>
-      <div class="card">
-        <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg></div>
-        <h3>Zéro chirurgie</h3>
-        <p>Pas de bistouri, pas de cicatrices, pas de récupération. Tu entres, tu sors, tu reprends ta journée.</p>
-      </div>
-      <div class="card">
-        <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div>
-        <h3>2 à 3 séances</h3>
-        <p>Ta hairline redessinée en quelques séances, pis c'est permanent. Tu dépends plus d'aucun produit à racheter.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ========== COMPARE ========== -->
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Pourquoi le SMP</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">SMP vs les autres options</h2>
-    <div class="matrix">
-      <div class="cgrid chead">
-        <div class="crit"></div>
-        <div class="csmp"><span class="badge">Top</span>SMP</div>
-        <div>Greffe <span class="sm">(Turquie)</span></div>
-        <div>Produits</div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Chirurgie</div>
-        <div class="csmp cell"><span class="y">Aucune</span></div>
-        <div><span class="n">Oui</span></div>
-        <div>Non</div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Résultat</div>
-        <div class="csmp cell">1<sup>re</sup> séance</div>
-        <div>6–12 mois</div>
-        <div><span class="n">Incertain</span></div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Permanent</div>
-        <div class="csmp cell"><span class="y">Oui</span></div>
-        <div>Variable</div>
-        <div><span class="n">Non</span></div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Risque</div>
-        <div class="csmp cell"><span class="y">Minime</span></div>
-        <div><span class="n">Élevé</span></div>
-        <div>Faible</div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Coût</div>
-        <div class="csmp cell">Selon le cas</div>
-        <div><span class="n">Élevé</span></div>
-        <div>À vie</div>
-      </div>
-      <div class="cgrid">
-        <div class="crit">Où</div>
-        <div class="csmp cell"><span class="y">Longueuil</span></div>
-        <div><span class="n">Turquie</span></div>
-        <div>Maison</div>
-      </div>
-      <div class="cgrid crow-last">
-        <div class="crit">Suivi</div>
-        <div class="csmp cell"><span class="y">En personne</span></div>
-        <div><span class="n">Aucun</span></div>
-        <div>—</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ========== PREVIEW TOOL ========== -->
-<section id="apercu">
-  <div class="wrap">
-    <div class="eyebrow">Essaie-le sur toi</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">Vois ton résultat avant de booker</h2>
-    <p class="muted" style="margin-top:12px">Ajoute une photo de ta tête, choisis ton style pis vois de quoi t'aurais l'air avec le SMP. Ça prend 30 secondes.</p>
-    <div class="pv">
-      <label class="pv-drop">
-        <input type="file" id="pvFile" accept="image/*" hidden>
-        <div class="pv-drop-in" id="pvDropIn">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <b>Ajoute ta photo</b>
-          <span>De face, bien éclairé, cheveux courts ou rasés idéalement</span>
-        </div>
-        <img id="pvThumb" alt="Ta photo" hidden>
-      </label>
-
-      <div>
-        <div class="pv-lbl">Style de hairline</div>
-        <div class="pv-opts" data-name="style">
-          <button type="button" class="pv-opt active" data-v="natural">Naturelle<small>douce, dégradée</small></button>
-          <button type="button" class="pv-opt" data-v="sharp">Line-up<small>nette, définie</small></button>
-          <button type="button" class="pv-opt" data-v="density">Densité<small>même ligne</small></button>
-        </div>
-      </div>
-      <div>
-        <div class="pv-lbl">Densité</div>
-        <div class="pv-opts" data-name="density">
-          <button type="button" class="pv-opt" data-v="light">Légère</button>
-          <button type="button" class="pv-opt active" data-v="medium">Moyenne</button>
-          <button type="button" class="pv-opt" data-v="full">Pleine</button>
-        </div>
-      </div>
-
-      <button type="button" class="btn block" id="pvGo" disabled>Génère mon aperçu</button>
-      <p class="pv-status" id="pvStatus"></p>
-
-      <div class="pv-result" id="pvResult" hidden>
-        <div class="cmp" id="cmp">
-          <img id="cmpBefore" alt="Avant">
-          <div class="cmp-after" id="cmpAfterWrap"><img id="cmpAfter" alt="Après — aperçu SMP"></div>
-          <div class="cmp-handle" id="cmpHandle"></div>
-          <span class="tag l">Avant</span><span class="tag r">Après</span>
-          <input type="range" id="cmpRange" min="0" max="100" value="50" aria-label="Glisse pour comparer avant et après">
-        </div>
-        <div id="pvLineGroup">
-          <div class="pv-lbl">Ajuste la hauteur de ta hairline</div>
-          <input type="range" id="pvLine" min="10" max="55" value="30">
-        </div>
-        <p class="pv-disc">Aperçu indicatif seulement. Ton vrai résultat dépend de ton cuir chevelu, de ta peau pis du plan qu'on fait ensemble en consultation.</p>
-        <a href="#reserver" id="pvBook" target="_blank" rel="noopener" class="btn block">J'aime ça, je réserve ma consultation</a>
-      </div>
-      <p class="pv-privacy">🔒 Ta photo sert juste à générer ton aperçu. Elle est jamais publiée.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ========== STEPS ========== -->
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Comment ça marche</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">De la consultation au résultat</h2>
-    <div class="steps">
-      <div class="step"><div class="no"></div><div><h3>Consultation gratuite</h3><p>15 minutes. Je regarde ton cuir chevelu pis je te dis honnêtement ce qu'on peut faire.</p></div></div>
-      <div class="step"><div class="no"></div><div><h3>On bâtit ton plan</h3><p>Ta hairline, ta densité, ton look. On définit ensemble le résultat visé.</p></div></div>
-      <div class="step"><div class="no"></div><div><h3>2 à 3 séances</h3><p>On dépose les pigments par étapes pour un résultat progressif et naturel.</p></div></div>
-      <div class="step"><div class="no"></div><div><h3>Résultat permanent</h3><p>Tu repars avec une hairline nette — pis zéro produit à racheter chaque mois.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ========== PRICE ========== -->
-<section id="prix">
-  <div class="wrap">
-    <div class="eyebrow">L'investissement</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">Le vrai prix, sans détour</h2>
-    <div class="price">
-      <div class="promo-pill">Offre de lancement · 20 premières personnes</div>
-      <div class="amounts">
-        <span class="now">250<small>&nbsp;$</small></span>
-      </div>
-      <p class="rebate-lbl">de rabais sur ta séance</p>
-      <p class="finance">Chaque cas est différent : de <b>500&nbsp;$</b> (petite retouche) à <b>5000&nbsp;$</b> (transformation complète). On fixe ton prix exact en consultation gratuite — pis les 20 premières personnes gardent leur 250&nbsp;$ de rabais.</p>
-    </div>
-
-  </div>
-</section>
-
-<!-- ========== TESTIMONIALS ========== -->
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Ils l'ont fait</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">Transformations réelles</h2>
-    <div class="results">
-      <div class="result"><img src="img/ba-1.png" alt="Transformation SMP — avant et après" loading="lazy"></div>
-      <div class="result"><img src="img/ba-2.png" alt="Transformation SMP — avant et après" loading="lazy"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ========== FAQ ========== -->
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Les vraies questions</div>
-    <h2 style="font-size:clamp(26px,6.5vw,38px)">FAQ</h2>
-    <div class="faq">
-      <details open><summary>Est-ce que ça a l'air naturel?</summary><p>Oui. On recrée l'apparence de follicules rasés, point par point, adapté à ta couleur pis à ta densité. Personne va voir que c'est du SMP — ils vont juste voir une hairline nette.</p></details>
-      <details><summary>Est-ce que ça fait mal?</summary><p>C'est très tolérable. La plupart des clients décrivent ça comme une sensation de picotement léger. On y va à ton rythme.</p></details>
-      <details><summary>Est-ce que ça dure vraiment?</summary><p>Le résultat est permanent. Avec le temps, un petit entretien aux quelques années garde tout net — mais tu dépends d'aucun produit à racheter chaque mois.</p></details>
-      <details><summary>Combien de séances ça prend?</summary><p>En général 2 à 3 séances, espacées de quelques semaines, pour un résultat progressif et naturel.</p></details>
-      <details><summary>C'est pour qui?</summary><p>Hairline qui recule, cheveux qui s'éclaircissent, calvitie plus avancée, ou cicatrices de greffe. On regarde ton cas précis en consultation gratuite.</p></details>
-    </div>
-  </div>
-</section>
-
-<!-- ========== BOOKING ========== -->
-<section id="reserver">
-  <div class="wrap">
-    <div class="book">
-      <div class="eyebrow">Dernière étape</div>
-      <h2>Réserve ta consultation gratuite</h2>
-      <p class="muted" style="margin-top:10px">15 minutes, aucune pression. Choisis ton moment directement sur Booksy — confirmation et rappels automatiques, pis je te reçois au shop.</p>
-
-      <a href="https://booksy.com/en-ca/instant-experiences/widget/21150?instant_experiences_enabled=true&amp;ig_ix=true&amp;utm_source=ig&amp;utm_medium=social&amp;utm_content=link_in_bio&amp;fbclid=PAdGRleAU7JFZleHRuA2FlbQIxMQBwZG9mAmZkaWQWUQNb7V_wLLs_pHqX9XEuSbaf1VBi8HNydGMGYXBwX2lkDzEyNDAyNDU3NDI4NzQxNAABpwZMrF_oxXbw3YwuY1C9VBwDNrr75AZ2WACr7hyi9AstLkPtuZRnqD5gm-yU_aem_fosBoG3RGATJB50AaDtJwA" target="_blank" rel="noopener" class="btn block" style="margin-top:22px">Réserver sur Booksy →</a>
-      <p class="note">Tu seras redirigé vers la page Booksy de RDV Barbershop pour choisir ton créneau.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ========== FOOTER ========== -->
-<footer>
-  <div class="wrap">
-    <div class="foot-grid">
-      <div>
-        <h4>RDV Barbershop</h4>
-        <p>622 Rue Saint-Thomas</p>
-        <p>Longueuil, QC J4H 3A6</p>
-      </div>
-      <div>
-        <h4>Heures</h4>
-        <p>Lun – Ven · sur rendez-vous</p>
-        <p>Sam · sur rendez-vous</p>
-      </div>
-      <div>
-        <h4>Suis-moi</h4>
-        <a href="#">TikTok</a>
-        <a href="#">Instagram</a>
-      </div>
-    </div>
-    <p class="copyline">© RDV Barbershop — SMP · Longueuil. Page conçue par Parklane Production.</p>
-  </div>
-</footer>
-
-<!-- ========== STICKY CTA ========== -->
-<div class="stickybar">
-  <div class="lbl"><b>Résultat permanent</b> · sans chirurgie</div>
-  <a href="https://booksy.com/en-ca/instant-experiences/widget/21150?instant_experiences_enabled=true&amp;ig_ix=true&amp;utm_source=ig&amp;utm_medium=social&amp;utm_content=link_in_bio&amp;fbclid=PAdGRleAU7JFZleHRuA2FlbQIxMQBwZG9mAmZkaWQWUQNb7V_wLLs_pHqX9XEuSbaf1VBi8HNydGMGYXBwX2lkDzEyNDAyNDU3NDI4NzQxNAABpwZMrF_oxXbw3YwuY1C9VBwDNrr75AZ2WACr7hyi9AstLkPtuZRnqD5gm-yU_aem_fosBoG3RGATJB50AaDtJwA" target="_blank" rel="noopener" class="btn">Consultation gratuite</a>
-</div>
-
-<script>
-  // FAQ: keep one open at a time for tidiness
-  // ---- SMP preview tool ----
-  // Tries the AI endpoint first (works once hosted with the server function); otherwise renders an on-device simulation.
-  (() => {
-    const API_URL = '/api/generate';
-    const $ = id => document.getElementById(id);
-    const file = $('pvFile'), thumb = $('pvThumb'), dropIn = $('pvDropIn'), go = $('pvGo'), status = $('pvStatus'),
-          result = $('pvResult'), cmp = $('cmp'), before = $('cmpBefore'), after = $('cmpAfter'),
-          afterWrap = $('cmpAfterWrap'), handle = $('cmpHandle'), range = $('cmpRange'),
-          line = $('pvLine'), lineGroup = $('pvLineGroup');
-    const heroBtn = document.querySelector('.cta-row .btn');
-    if (heroBtn) $('pvBook').href = heroBtn.href;
-    const state = { style: 'natural', density: 'medium' };
-    let src = null, mode = null;
-
-    document.querySelectorAll('.pv-opts').forEach(g => g.addEventListener('click', e => {
-      const b = e.target.closest('.pv-opt'); if (!b) return;
-      g.querySelectorAll('.pv-opt').forEach(x => x.classList.toggle('active', x === b));
-      state[g.dataset.name] = b.dataset.v;
-      if (!result.hidden && mode === 'sim') renderSim();
-    }));
-
-    file.addEventListener('change', () => {
-      const f = file.files && file.files[0]; if (!f) return;
-      if (!f.type.startsWith('image/')) { status.textContent = 'Choisis un fichier image (JPG ou PNG).'; return; }
-      const url = URL.createObjectURL(f);
-      const im = new Image();
-      im.onload = () => { src = im; thumb.src = url; thumb.hidden = false; dropIn.hidden = true; go.disabled = false; status.textContent = ''; result.hidden = true; go.textContent = 'Génère mon aperçu'; };
-      im.onerror = () => { status.textContent = "On n'a pas pu lire cette photo. Essaie un JPG ou PNG."; };
-      im.src = url;
+  let res;
+  try {
+    res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body,
     });
+  } catch {
+    return json({ error: 'Could not reach OpenAI.' }, 502);
+  }
 
-    function scaled() {
-      const max = 1000, r = Math.min(1, max / Math.max(src.naturalWidth, src.naturalHeight));
-      const c = document.createElement('canvas');
-      c.width = Math.round(src.naturalWidth * r); c.height = Math.round(src.naturalHeight * r);
-      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
-      return c;
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.data || !data.data[0] || !data.data[0].b64_json) {
+    console.log('OpenAI error', res.status, JSON.stringify(data && data.error));
+    return json({ error: 'Preview failed.' }, 502);
+  }
+  return json({ image: 'data:image/png;base64,' + data.data[0].b64_json });
+}
+
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/generate') {
+      if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
+      return handleGenerate(request, env);
     }
-
-    function renderSim() {
-      const c = scaled(), W = c.width, H = c.height, ctx = c.getContext('2d');
-      let seed = 1234567; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-      const D = { light: { sp: 7, a: .42 }, medium: { sp: 5.2, a: .58 }, full: { sp: 4, a: .72 } }[state.density];
-      const k = W / 900, sp = D.sp * k;
-      const lineY = H * line.value / 100, cx = W / 2, hw = W * 0.34, domeH = lineY + H * 0.04;
-      const edge = x => {
-        const u = Math.min(1, Math.abs(x - cx) / hw);
-        if (state.style === 'sharp') return lineY - Math.pow(u, 6) * H * 0.05;
-        return lineY - u * u * H * 0.07;
-      };
-      const feather = state.style === 'sharp' ? H * 0.006 : state.style === 'density' ? H * 0.08 : H * 0.035;
-      const alpha = state.style === 'density' ? D.a * 0.8 : D.a;
-      ctx.globalCompositeOperation = 'multiply';
-      const n = Math.round((2 * hw * domeH) / (sp * sp));
-      for (let i = 0; i < n; i++) {
-        const x = cx - hw + rnd() * 2 * hw, y = rnd() * domeH;
-        const ex = (x - cx) / hw, ey = (y - domeH) / domeH;
-        if (ex * ex + ey * ey > 1) continue;
-        const e = edge(x); if (y > e) continue;
-        const p = (e - y) < feather ? (e - y) / feather : 1;
-        if (rnd() > p) continue;
-        ctx.fillStyle = 'rgba(58,46,38,' + (alpha * (0.7 + rnd() * 0.3)).toFixed(3) + ')';
-        ctx.beginPath(); ctx.arc(x, y, (0.7 + rnd() * 0.7) * k * 1.1, 0, 6.2832); ctx.fill();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      after.src = c.toDataURL('image/jpeg', .9);
-    }
-
-    function setPos(v) { afterWrap.style.clipPath = 'inset(0 0 0 ' + v + '%)'; handle.style.left = v + '%'; range.value = v; }
-    range.addEventListener('input', () => setPos(range.value));
-    line.addEventListener('input', () => { if (mode === 'sim') renderSim(); });
-
-    go.addEventListener('click', async () => {
-      if (!src) return;
-      go.disabled = true; go.textContent = 'Génération en cours…'; status.textContent = '';
-      const base = scaled();
-      cmp.style.aspectRatio = base.width + ' / ' + base.height;
-      before.src = base.toDataURL('image/jpeg', .9);
-      let ok = false;
-      try {
-        const blob = await new Promise(r => base.toBlob(r, 'image/jpeg', .9));
-        const fd = new FormData();
-        fd.append('photo', blob, 'photo.jpg'); fd.append('style', state.style); fd.append('density', state.density);
-        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 90000);
-        const res = await fetch(API_URL, { method: 'POST', body: fd, signal: ctrl.signal });
-        clearTimeout(t);
-        if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
-          const j = await res.json();
-          if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; }
-        }
-      } catch (e) {}
-      if (!ok) { mode = 'sim'; renderSim(); }
-      lineGroup.hidden = mode !== 'sim';
-      result.hidden = false; setPos(50);
-      go.disabled = false; go.textContent = 'Regénère mon aperçu';
-      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  })();
-
-const faqs = document.querySelectorAll('.faq details');
-  faqs.forEach(d => d.addEventListener('toggle', () => {
-    if (d.open) faqs.forEach(o => { if (o !== d) o.open = false; });
-  }));
-
-
-</script>
-
-</body></html>
+    return env.ASSETS.fetch(request); // index.html, photos
+  },
+};
