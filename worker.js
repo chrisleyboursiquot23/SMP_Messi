@@ -110,9 +110,74 @@ async function handleGenerate(request, env) {
   return json({ image: 'data:image/png;base64,' + data.data[0].b64_json });
 }
 
+// ---- Booking requests: POST /api/book -> email alert (via Resend) ----
+// Secrets to set in Cloudflare: RESEND_API_KEY, NOTIFY_EMAIL (where alerts go).
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clip = (s, n) => String(s || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
+
+async function handleBook(request, env) {
+  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return json({ error: 'Server not configured (RESEND_API_KEY / NOTIFY_EMAIL).' }, 500);
+  let b;
+  try { b = await request.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+  if (b.website) return json({ ok: true }); // honeypot: bots fill the hidden field
+
+  const name = clip(b.name, 80);
+  let digits = String(b.phone || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+  const procedure = clip(b.procedure, 80);
+  const mode = b.mode === 'online' ? 'En ligne (appel vidéo)' : 'Au shop (en personne)';
+  const when = clip(b.when, 60);
+  if (name.split(' ').length < 2 || digits.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || '')) || !when) {
+    return json({ error: 'Missing or invalid fields.' }, 400);
+  }
+
+  const phonePretty = `${digits.slice(0, 3)} ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  const first = name.split(' ')[0];
+  const smsBody = `Salut ${first}! C'est Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
+    (b.mode === 'online' ? ', par appel vidéo. Je t\'envoie le lien juste avant.' : ' au 622 Rue Saint-Thomas, Longueuil.') +
+    ' Un empêchement? Réponds juste à ce texto.';
+  const smsLink = `sms:+1${digits}?&body=${encodeURIComponent(smsBody)}`;
+
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#141416">
+    <p style="font-size:12px;letter-spacing:2px;color:#FF7A1A;font-weight:bold;margin:0 0 6px">NOUVEAU RENDEZ-VOUS SMP</p>
+    <h2 style="margin:0 0 16px">${esc(name)}</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:15px">
+      <tr><td style="padding:8px 0;color:#777;width:110px">Quand</td><td style="padding:8px 0"><b>${esc(when)}</b></td></tr>
+      <tr><td style="padding:8px 0;color:#777">Téléphone</td><td style="padding:8px 0"><a href="tel:+1${digits}">${phonePretty}</a></td></tr>
+      <tr><td style="padding:8px 0;color:#777">Procédure</td><td style="padding:8px 0">${esc(procedure)}</td></tr>
+      <tr><td style="padding:8px 0;color:#777">Type</td><td style="padding:8px 0">${esc(mode)}</td></tr>
+    </table>
+    <p style="margin:22px 0 8px"><a href="${esc(smsLink)}" style="display:inline-block;background:#FF7A1A;color:#1A1407;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:999px">Texter le client pour confirmer</a></p>
+    <p style="margin:0 0 18px"><a href="tel:+1${digits}" style="color:#FF7A1A">ou appeler ${phonePretty}</a></p>
+    <p style="font-size:13px;color:#777;border-top:1px solid #eee;padding-top:12px">Texto prêt à envoyer :<br><i>${esc(smsBody)}</i></p>
+  </div>`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from: env.FROM_EMAIL || 'RDV SMP <onboarding@resend.dev>',
+      to: [env.NOTIFY_EMAIL],
+      subject: `Nouveau RDV SMP : ${name} — ${when}`,
+      html,
+    }),
+  }).catch(() => null);
+
+  if (!res || !res.ok) {
+    console.log('Resend error', res && res.status, res && await res.text().catch(() => ''));
+    return json({ error: 'Could not send.' }, 502);
+  }
+  return json({ ok: true });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/book') {
+      if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
+      return handleBook(request, env);
+    }
     if (url.pathname === '/api/generate') {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
       return handleGenerate(request, env);

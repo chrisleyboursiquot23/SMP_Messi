@@ -245,6 +245,37 @@
   .pv-fine input[type=text]{margin-top:2px;}
   .pv-left{font-size:13px;color:var(--muted);text-align:center;margin-top:-6px;}
   .pv-left b{color:var(--fg);}
+  /* ---- Booking form ---- */
+  #bkForm{grid-template-columns:minmax(0,1fr);}
+  #bkForm>div,#bkForm>label{min-width:0;}
+  #bkForm select{text-overflow:ellipsis;}
+  .bk-mode{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .bk-mode-btn{text-align:left;background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:12px;padding:13px 14px;font-family:inherit;cursor:pointer;}
+  .bk-mode-btn b{display:block;font-size:15px;margin-bottom:3px;}
+  .bk-mode-btn b em{font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:#1A1407;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:2px;}
+  .bk-mode-btn span{font-size:12px;color:var(--muted);line-height:1.35;display:block;}
+  .bk-mode-btn.active{border-color:var(--accent);background:rgba(255,122,26,.08);}
+  .bk-tip{font-size:12.5px;color:var(--muted);margin-top:8px;}
+  .bk-days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;}
+  .bk-day{flex:none;width:62px;background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:12px;padding:9px 0;font-family:inherit;cursor:pointer;text-align:center;line-height:1.15;}
+  .bk-day small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .bk-day b{display:block;font-family:var(--fdisplay);font-size:20px;font-weight:800;margin:2px 0;}
+  .bk-day.active{background:var(--accent);border-color:var(--accent);color:#1A1407;}
+  .bk-day.active small{color:#3A2410;}
+  .bk-times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .bk-time{background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:10px;padding:11px 0;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+  .bk-time:hover{border-color:var(--accent);}
+  .bk-time.active{background:var(--accent);border-color:var(--accent);color:#1A1407;}
+  .bk-empty{grid-column:1/-1;font-size:13px;color:var(--muted);}
+  .bk-consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted);cursor:pointer;margin:0;}
+  .bk-consent input{width:18px;height:18px;flex:none;margin-top:2px;accent-color:var(--accent);padding:0;}
+  .bk-done{text-align:center;padding:26px 0 6px;}
+  .bk-check{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#1A1407;font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+  .bk-done h3{font-size:26px;margin-bottom:10px;}
+  .bk-done #bkSummary{font-size:15px;line-height:1.6;}
+  .bk-done #bkSummary b{color:var(--fg);}
+  .bk-invalid{border-color:var(--bad)!important;}
+  @media(max-width:380px){ .bk-times{grid-template-columns:repeat(3,1fr);} }
   .pv-fine{border-bottom:none;}
   .calc-disc{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:16px;}
   @media(min-width:460px){ .calc-plans{grid-template-columns:repeat(4,1fr);} }
@@ -548,10 +579,62 @@
     <div class="book">
       <div class="eyebrow">Dernière étape</div>
       <h2>Réserve ta consultation gratuite</h2>
-      <p class="muted" style="margin-top:10px">Au moins 30 minutes, aucune pression. Choisis ton moment directement sur Booksy — confirmation et rappels automatiques, pis je te reçois au shop.</p>
+      <p class="muted" style="margin-top:10px">Au moins 30 minutes, aucune pression. Choisis ton moment pis je te confirme par texto.</p>
 
-      <a href="https://booksy.com/en-ca/instant-experiences/widget/21150?instant_experiences_enabled=true&amp;ig_ix=true&amp;utm_source=ig&amp;utm_medium=social&amp;utm_content=link_in_bio&amp;fbclid=PAdGRleAU7JFZleHRuA2FlbQIxMQBwZG9mAmZkaWQWUQNb7V_wLLs_pHqX9XEuSbaf1VBi8HNydGMGYXBwX2lkDzEyNDAyNDU3NDI4NzQxNAABpwZMrF_oxXbw3YwuY1C9VBwDNrr75AZ2WACr7hyi9AstLkPtuZRnqD5gm-yU_aem_fosBoG3RGATJB50AaDtJwA" target="_blank" rel="noopener" class="btn block" style="margin-top:22px">Réserver sur Booksy →</a>
-      <p class="note">Tu seras redirigé vers la page Booksy de RDV Barbershop pour choisir ton créneau.</p>
+      <form id="bkForm" novalidate>
+        <div>
+          <label for="bkName">Nom complet</label>
+          <input id="bkName" name="name" type="text" autocomplete="name" required placeholder="Ex. : Marc Tremblay">
+        </div>
+        <div>
+          <label for="bkPhone">Téléphone</label>
+          <input id="bkPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="514 555-1234">
+        </div>
+        <div>
+          <label for="bkProc">Procédure désirée</label>
+          <select id="bkProc" name="procedure" required>
+            <option value="hairline">Hairline (golfes)</option>
+            <option value="crown">Couronne</option>
+            <option value="temples">Tempes (côtés)</option>
+            <option value="full">Toute la tête</option>
+            <option value="density">Densité (garder mes cheveux)</option>
+            <option value="correction">Retouche / correction d'un ancien SMP</option>
+            <option value="unsure" selected>Je sais pas encore, on en parle en consultation</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Type de consultation</label>
+          <div class="bk-mode" id="bkMode">
+            <button type="button" class="bk-mode-btn active" data-v="inperson"><b>Au shop <em>Recommandé</em></b><span>622 Rue Saint-Thomas, Longueuil</span></button>
+            <button type="button" class="bk-mode-btn" data-v="online"><b>En ligne</b><span>Appel vidéo de 30 min et +</span></button>
+          </div>
+          <p class="bk-tip" id="bkTip">En personne, Messi peut voir ton cuir chevelu de proche pis te donner un prix exact.</p>
+        </div>
+
+        <div>
+          <label>Date</label>
+          <div class="bk-days" id="bkDays"></div>
+        </div>
+        <div>
+          <label>Heure</label>
+          <div class="bk-times" id="bkTimes"><p class="bk-empty">Choisis une date d'abord.</p></div>
+        </div>
+
+        <input type="text" id="bkHp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <label class="bk-consent"><input type="checkbox" id="bkConsent" required> <span>J'accepte d'être contacté par texto ou par téléphone au sujet de mon rendez-vous.</span></label>
+
+        <p class="pv-status" id="bkError"></p>
+        <button type="submit" class="btn block" id="bkSubmit">Confirmer mon rendez-vous</button>
+      </form>
+
+      <div class="bk-done" id="bkDone" hidden>
+        <div class="bk-check">✓</div>
+        <h3>C'est booké!</h3>
+        <p class="muted" id="bkSummary"></p>
+        <p class="note">Messi va te texter pour confirmer. Un empêchement? Réponds juste à son texto pour changer ton heure.</p>
+      </div>
+      <p class="note" style="margin-top:16px">Tu préfères Booksy? <a id="bkBooksy" href="#" target="_blank" rel="noopener" style="color:var(--accent)">Réserve là</a>.</p>
     </div>
   </div>
 </section>
@@ -760,6 +843,119 @@
     });
 
     renderLeft(); sync();
+  })();
+
+// ---- Booking form ----
+  // Shows open slots from opening hours, sends the booking to /api/book (email alert to Messi).
+  (() => {
+    const BOOKSY = 'https://booksy.com/en-ca/instant-experiences/widget/21150';
+    const HOURS = { 1: [10, 18], 2: [10, 18], 3: [10, 18], 4: [10, 20], 5: [10, 20], 6: [9, 17] }; // Mon–Sat, Sunday closed
+    const STEP_MIN = 30, DAYS_AHEAD = 21;
+    const $ = id => document.getElementById(id);
+    const form = $('bkForm'), days = $('bkDays'), times = $('bkTimes'), err = $('bkError');
+    $('bkBooksy').href = BOOKSY;
+    const st = { mode: 'inperson', day: null, time: null };
+    const JOURS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+    const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    const pad = n => String(n).padStart(2, '0');
+    const fmtTime = m => Math.floor(m / 60) + ' h ' + pad(m % 60);
+
+    // Point every "book" button on the page to this form
+    document.querySelectorAll('a[href*="booksy.com"]').forEach(a => {
+      if (a.id === 'bkBooksy') return;
+      a.href = '#reserver'; a.removeAttribute('target');
+    });
+    const pvBook = $('pvBook'); if (pvBook) { pvBook.href = '#reserver'; pvBook.removeAttribute('target'); }
+
+    // Mode
+    $('bkMode').addEventListener('click', e => {
+      const b = e.target.closest('[data-v]'); if (!b) return;
+      st.mode = b.dataset.v;
+      $('bkMode').querySelectorAll('[data-v]').forEach(x => x.classList.toggle('active', x === b));
+      $('bkTip').textContent = st.mode === 'inperson'
+        ? 'En personne, Messi peut voir ton cuir chevelu de proche pis te donner un prix exact.'
+        : "On t'envoie le lien vidéo par texto. Prépare 2-3 photos de ta tête (devant, dessus, couronne).";
+    });
+
+    // Days
+    const now = new Date();
+    for (let i = 0, added = 0; added < DAYS_AHEAD && i < 40; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      if (!HOURS[d.getDay()]) continue;
+      if (i === 0 && now.getHours() >= HOURS[d.getDay()][1] - 1) continue; // too late today
+      added++;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'bk-day';
+      b.dataset.v = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      b.innerHTML = '<small>' + (i === 0 ? 'auj.' : JOURS[d.getDay()]) + '</small><b>' + d.getDate() + '</b><small>' + MOIS[d.getMonth()] + '</small>';
+      days.appendChild(b);
+    }
+    days.addEventListener('click', e => {
+      const b = e.target.closest('.bk-day'); if (!b) return;
+      days.querySelectorAll('.bk-day').forEach(x => x.classList.toggle('active', x === b));
+      st.day = b.dataset.v; st.time = null; renderTimes();
+    });
+
+    function renderTimes() {
+      const [y, mo, da] = st.day.split('-').map(Number);
+      const d = new Date(y, mo - 1, da), [h0, h1] = HOURS[d.getDay()];
+      const isToday = d.toDateString() === new Date().toDateString();
+      const minNow = new Date().getHours() * 60 + new Date().getMinutes() + 60; // at least 1h notice
+      times.innerHTML = '';
+      for (let m = h0 * 60; m <= h1 * 60 - 30; m += STEP_MIN) {
+        if (isToday && m < minNow) continue;
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'bk-time'; b.dataset.v = m; b.textContent = fmtTime(m);
+        times.appendChild(b);
+      }
+      if (!times.children.length) times.innerHTML = '<p class="bk-empty">Plus de place cette journée-là. Choisis une autre date.</p>';
+    }
+    times.addEventListener('click', e => {
+      const b = e.target.closest('.bk-time'); if (!b) return;
+      times.querySelectorAll('.bk-time').forEach(x => x.classList.toggle('active', x === b));
+      st.time = Number(b.dataset.v);
+    });
+
+    // Prefill the procedure from the preview tool choices
+    const areas = document.getElementById('pvAreas');
+    if (areas) areas.addEventListener('click', () => setTimeout(() => {
+      const act = [...areas.querySelectorAll('.active')].map(x => x.dataset.v);
+      if (act.length === 1) $('bkProc').value = act[0];
+    }, 0));
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      err.textContent = '';
+      form.querySelectorAll('.bk-invalid').forEach(x => x.classList.remove('bk-invalid'));
+      const name = $('bkName').value.trim(), phone = $('bkPhone').value.replace(/[^\d+]/g, '');
+      const bad = [];
+      if (name.split(/\s+/).length < 2) { bad.push('ton nom complet'); $('bkName').classList.add('bk-invalid'); }
+      if (phone.replace(/^\+?1/, '').length !== 10) { bad.push('un numéro de téléphone valide'); $('bkPhone').classList.add('bk-invalid'); }
+      if (!st.day) bad.push('une date');
+      if (st.time === null) bad.push('une heure');
+      if (!$('bkConsent').checked) bad.push('ton accord pour être contacté');
+      if (bad.length) { err.textContent = 'Il manque ' + bad.join(', ') + '.'; return; }
+
+      const [y, mo, da] = st.day.split('-').map(Number);
+      const d = new Date(y, mo - 1, da);
+      const when = JOURS[d.getDay()] + ' ' + da + ' ' + MOIS[mo - 1] + ' à ' + fmtTime(st.time);
+      const proc = $('bkProc').selectedOptions[0].textContent;
+      const modeTxt = st.mode === 'inperson' ? 'Au shop · 622 Rue Saint-Thomas, Longueuil' : 'En ligne · appel vidéo';
+      const btn = $('bkSubmit'); btn.disabled = true; btn.textContent = 'Envoi en cours…';
+      const payload = { name, phone, procedure: proc, mode: st.mode, date: st.day, time: fmtTime(st.time), when,
+                        website: ($('bkHp') || {}).value || '' };
+      const ok = await fetch('/api/book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(r => r.ok).catch(() => false);
+      btn.disabled = false; btn.textContent = 'Confirmer mon rendez-vous';
+      if (!ok) {
+        err.innerHTML = "Oups, ta demande a pas pu être envoyée. Réessaie dans une minute, ou <a href='" + BOOKSY + "' target='_blank' rel='noopener' style='color:inherit'>réserve sur Booksy</a>.";
+        return;
+      }
+      try { if (window.fbq) fbq('track', 'Schedule'); } catch (e) {}
+      $('bkSummary').innerHTML = '<b>' + name.replace(/[<>&]/g, '') + '</b><br>' + when + '<br>' + proc + '<br>' + modeTxt;
+      form.hidden = true; $('bkDone').hidden = false;
+      $('reserver').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   })();
 
 const faqs = document.querySelectorAll('.faq details');
