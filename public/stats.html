@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>RDV SMP · Statistiques</title>
+<style>
+  :root{--bg:#0B0B0C;--s1:#141416;--s2:#1C1C1F;--line:#2A2A2E;--fg:#F5F3EF;--muted:#9A968F;--gold:#FF7A1A;--on:#1A0D00;--bad:#FF6B5B;--good:#7BD88F}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:24px 18px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .brand{font-weight:800;letter-spacing:.18em;font-size:13px}.brand span{color:var(--gold)}
+  h1{font-size:26px;margin:14px 0 4px}
+  .sub{color:var(--muted);margin:0 0 18px}
+  .card{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:14px}
+  .card h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 4px}
+  .card .hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+  input{background:var(--bg);border:1.5px solid var(--line);color:var(--fg);border-radius:10px;padding:11px 12px;font:inherit;width:100%}
+  .btn{background:var(--gold);color:var(--on);border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:700;cursor:pointer}
+  .seg{display:inline-flex;background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .seg button{background:none;border:0;color:var(--muted);font:inherit;font-weight:700;font-size:13px;padding:7px 13px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--gold);color:var(--on)}
+  .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+  .kpi{background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .kpi b{display:block;font-size:26px;line-height:1.1;margin-top:4px}
+  .kpi span{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .kpi.hl{border-color:var(--gold)}.kpi.hl b{color:var(--gold)}
+  .fun{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 56px 70px;gap:8px 10px;align-items:center;font-size:14px}
+  .fun .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fun .bar{height:22px;background:var(--s2);border-radius:6px;overflow:hidden}
+  .fun .bar i{display:block;height:100%;background:var(--gold);border-radius:6px}
+  .fun .bar i.end{background:var(--good)}.fun .bar i.out{background:var(--bad)}
+  .fun .n{text-align:right;font-weight:700}
+  .fun .d{text-align:right;font-size:12.5px;color:var(--muted)}.fun .d.big{color:var(--bad);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+  td{padding:9px 6px;border-bottom:1px solid var(--line)}td.r,th.r{text-align:right}
+  .chart{display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:6px}
+  .chart .c{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;position:relative;min-width:3px}
+  .chart .v{background:#3A3833;border-radius:3px 3px 0 0}.chart .b{background:var(--gold);border-radius:3px 3px 0 0;position:absolute;bottom:0;left:0;right:0}
+  .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11.5px;margin-top:6px}
+  .legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-bottom:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .msg{color:var(--bad);font-size:14px;margin-top:10px}
+  .empty{color:var(--muted);text-align:center;padding:20px 0}
+  @media(max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:last-child{grid-column:span 2}.two{grid-template-columns:1fr}.fun{grid-template-columns:minmax(0,1fr) 46px 38px 50px;gap:8px 7px}.fun .lab{font-size:13px}table{font-size:13px}th,td{padding:8px 4px}}
+  .tw{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="brand">RDV<span>·</span>SMP</div><div class="seg" id="range"><button data-d="7">7 j</button><button data-d="30" class="on">30 j</button><button data-d="90">90 j</button></div></header>
+  <h1>Statistiques du site</h1>
+  <p class="sub">Jusqu'où les visiteurs se rendent, combien essaient l'aperçu et combien réservent. Données anonymes : aucun nom ni courriel.</p>
+
+  <div class="card" id="login" hidden>
+    <h2>Accès</h2><p class="hint">Le mot de passe STATS_PASSWORD créé dans Cloudflare.</p>
+    <div style="display:flex;gap:10px"><input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password"><button class="btn" id="go">Voir</button></div>
+    <p class="msg" id="err"></p>
+  </div>
+
+  <div id="dash" hidden>
+    <div class="kpis" id="kpis" style="margin-top:6px"></div>
+    <div class="card"><h2>Parcours des visiteurs</h2><p class="hint">Nombre de visiteurs qui se sont rendus à chaque étape. La colonne de droite montre combien on perd par rapport à l'étape précédente : la plus grosse perte est en rouge.</p><div class="fun" id="fun"></div></div>
+    <div class="card"><h2>Chaque jour</h2><div class="legend"><span><i style="background:#3A3833"></i>Visites</span><span><i style="background:var(--gold)"></i>Rendez-vous</span></div><div class="chart" id="chart"></div><div class="axis" id="axis"></div></div>
+    <div class="card"><h2>D'où viennent les visiteurs</h2><p class="hint">Selon le lien utilisé (utm_source) ou le site d'où ils arrivent. « Direct » : lien tapé, ouvert depuis une app ou un message.</p><div class="tw"><table id="src"></table></div></div>
+    <div class="two">
+      <div class="card"><h2>Procédure demandée</h2><p class="hint">Choisie dans le formulaire de rendez-vous.</p><table id="heard"></table></div>
+      <div class="card"><h2>Profil</h2><table id="prof"></table></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const LABELS = { landing:'Visite du site', preview:"Section de l'aperçu vue", photo:'Photo téléversée', generated:'Aperçu généré', form:'Formulaire de rendez-vous vu', formstart:'Formulaire commencé', done:'Rendez-vous demandé' };
+const ORDER = Object.keys(LABELS);
+const SRC = { instagram:'Instagram', tiktok:'TikTok', facebook:'Facebook', google:'Google', youtube:'YouTube', direct:'Direct', other:'Autre site' };
+const HEARD = { hairline:'Hairline (golfes)', crown:'Couronne', temples:'Tempes', full:'Toute la tête', density:'Densité', correction:'Retouche / correction', unsure:'Pas encore décidé', '':'—' };
+const pct = (a,b) => b ? Math.round(a/b*100) : 0;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let days = 30;
+
+async function load(){
+  let pw=''; try{ pw=sessionStorage.getItem('rdvpw')||''; }catch(e){}
+  if(!pw){ $('login').hidden=false; $('dash').hidden=true; return; }
+  let r; try{ r=await fetch('/api/stats?days='+days,{headers:{'x-pw':pw}}); }catch(e){ $('login').hidden=false; $('err').textContent='Impossible de joindre le serveur.'; return; }
+  if(r.status===401){ try{sessionStorage.removeItem('rdvpw')}catch(e){} $('login').hidden=false; $('dash').hidden=true; $('err').textContent='Mot de passe incorrect.'; return; }
+  if(!r.ok){ $('login').hidden=false; $('err').textContent = r.status===503 ? "La base de statistiques n'est pas encore créée (STATS)." : 'Erreur '+r.status; return; }
+  $('login').hidden=true; $('dash').hidden=false; draw(await r.json());
+}
+
+function draw(d){
+  const f = Object.fromEntries(d.funnel.map(x=>[x.step,x.n]));
+    const v=f.landing||0, ph=f.photo||0, ge=f.generated||0, b2=f.done||0;
+  $('kpis').innerHTML = [['Visites',v],['Photos téléversées',ph,pct(ph,v)+' % des visites'],['Aperçus générés',ge,pct(ge,ph)+' % des photos'],['Rendez-vous',b2,pct(b2,v)+' % des visites'],['Clics Booksy',f.booksy||0,'réservent ailleurs']]
+    .map(([k,n,s],i)=>`<div class="kpi${i===3?' hl':''}"><span>${k}</span><b>${n}</b>${s?`<span style="text-transform:none;letter-spacing:0">${s}</span>`:''}</div>`).join('');
+  // funnel
+  const rows = ORDER.map(s=>[s,f[s]||0]); let worst=-1, wi=-1;
+  rows.forEach(([s,n],i)=>{ if(i&&rows[i-1][1]>=5){ const loss=(rows[i-1][1]-n)/rows[i-1][1]; if(loss>worst){worst=loss; wi=i;} } });
+  const max = Math.max(1,...rows.map(r=>r[1]));
+  $('fun').innerHTML = v ? rows.map(([s,n],i)=>{ const prev=i?rows[i-1][1]:0, drop=i&&prev?Math.round((prev-n)/prev*100):null;
+    return `<div class="lab">${LABELS[s]}</div><div class="bar"><i class="${s==='done'?'end':''}" style="width:${n/max*100}%"></i></div><div class="n">${n}</div><div class="d${i===wi&&worst>0?' big':''}">${drop===null?'':drop>0?'-'+drop+' %':'0 %'}</div>`; }).join('')
+    + (f.limit ? `<div class="lab" style="color:var(--muted)">Limite de 5 aperçus atteinte</div><div class="bar"><i class="out" style="width:${f.limit/max*100}%"></i></div><div class="n">${f.limit}</div><div class="d"></div>` : '')
+    : '<p class="empty" style="grid-column:1/-1">Pas encore de visites sur cette période.</p>';
+  // daily
+  const byDay = Object.fromEntries(d.daily.map(x=>[x.day,x])), list=[];
+  for(let i=0;i<d.days;i++){ const dt=new Date(d.from+'T12:00:00Z'); dt.setUTCDate(dt.getUTCDate()+i); const k=dt.toISOString().slice(0,10); list.push([k,byDay[k]||{visits:0,booked:0}]); }
+  const mx = Math.max(1,...list.map(([,x])=>x.visits));
+  $('chart').innerHTML = list.map(([k,x])=>`<div class="c" title="${k} : ${x.visits} visites, ${x.booked} rendez-vous"><div class="v" style="height:${x.visits/mx*100}%"></div><div class="b" style="height:${x.booked/mx*100}%"></div></div>`).join('');
+  const fd = k => new Date(k+'T12:00:00Z').toLocaleDateString('fr-CA',{day:'numeric',month:'short',timeZone:'UTC'});
+  $('axis').innerHTML = `<span>${fd(list[0][0])}</span><span>${fd(list[list.length-1][0])}</span>`;
+  // sources
+  $('src').innerHTML = '<tr><th>Source</th><th class="r">Visites</th><th class="r">Photos</th><th class="r">Aperçus</th><th class="r">RDV</th><th class="r">%</th></tr>' +
+    (d.sources.length ? d.sources.map(x=>`<tr><td>${SRC[x.src]||esc(x.src)}</td><td class="r">${x.visits}</td><td class="r">${x.started}</td><td class="r">${x.qualified}</td><td class="r"><b>${x.booked}</b></td><td class="r">${pct(x.booked,x.visits)} %</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucune donnée</td></tr>');
+  $('heard').innerHTML = '<tr><th>Procédure</th><th class="r">Demandes</th></tr>' + (d.heard.length ? d.heard.map(x=>`<tr><td>${HEARD[x.k]||esc(x.k)}</td><td class="r">${x.n}</td></tr>`).join('') : '<tr><td colspan="2" class="empty">Aucun rendez-vous</td></tr>');
+  const dv=Object.fromEntries(d.devices.map(x=>[x.k,x])), gm=Object.fromEntries(d.genders.map(x=>[x.k,x.n]));
+  $('prof').innerHTML = '<tr><th></th><th class="r">Visiteurs</th><th class="r">RDV</th></tr>'
+    + `<tr><td>Cellulaire</td><td class="r">${dv.m?dv.m.visits:0}</td><td class="r">${dv.m?dv.m.booked:0}</td></tr>`
+    + `<tr><td>Ordinateur</td><td class="r">${dv.d?dv.d.visits:0}</td><td class="r">${dv.d?dv.d.booked:0}</td></tr>`
+    + `<tr><th>Aperçus</th><th class="r">Nombre</th><th></th></tr>`
+    + `<tr><td>Faits par l'IA</td><td class="r">${gm.ai||0}</td><td></td></tr><tr><td>Simulation (IA indisponible)</td><td class="r">${gm.sim||0}</td><td></td></tr>`;
+}
+
+$('go').onclick = () => { try{ sessionStorage.setItem('rdvpw',$('pw').value); }catch(e){} $('err').textContent=''; load(); };
+$('pw').onkeydown = e => { if(e.key==='Enter') $('go').click(); };
+$('range').onclick = e => { const b=e.target.closest('button'); if(!b) return; days=+b.dataset.d; $('range').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); load(); };
+load();
+</script>
+</body>
+</html>

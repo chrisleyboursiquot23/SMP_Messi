@@ -670,6 +670,29 @@
 </div>
 
 <script>
+// ---- anonymous visitor stats (one ping per step per visit; no personal info) ----
+(() => {
+  let sid; try { sid = sessionStorage.getItem('rdvSid'); if (!sid) { sid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); sessionStorage.setItem('rdvSid', sid); } } catch (e) { sid = Math.random().toString(36).slice(2, 14); }
+  let src = 'direct';
+  try { src = sessionStorage.getItem('rdvSrc') || ''; if (!src) { const u = new URLSearchParams(location.search), raw = ((u.get('utm_source') || '') + ' ' + (u.get('fbclid') ? 'facebook' : '') + ' ' + document.referrer).toLowerCase();
+    src = /insta|\big\b/.test(raw) ? 'instagram' : /tiktok/.test(raw) ? 'tiktok' : /facebook|\bfb\b|meta/.test(raw) ? 'facebook' : /google/.test(raw) ? 'google' : /youtube|youtu\.be/.test(raw) ? 'youtube' : raw.trim() ? 'other' : 'direct';
+    sessionStorage.setItem('rdvSrc', src); } } catch (e) {}
+  const seen = new Set();
+  window.rdvTrack = (s, extra) => { if (seen.has(s)) return; seen.add(s);
+    try { const body = JSON.stringify({ sid, s, src, d: matchMedia('(max-width:820px)').matches ? 'm' : 'd', ...(extra || {}) });
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/track', body); else fetch('/api/track', { method: 'POST', body, keepalive: true }); } catch (e) {} };
+  rdvTrack('landing');
+  const watch = (id, s) => { const el = document.getElementById(id); if (!el || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { rdvTrack(s); io.disconnect(); } }, { threshold: .25 }); io.observe(el); };
+  addEventListener('DOMContentLoaded', () => {
+    watch('apercu', 'preview'); watch('reserver', 'form');
+    const f = document.getElementById('pvFile'); if (f) f.addEventListener('change', () => rdvTrack('photo'));
+    const fm = document.getElementById('bkForm'); if (fm) fm.addEventListener('focusin', () => rdvTrack('formstart'));
+    document.addEventListener('click', e => { const a = e.target.closest('a[href*="booksy"]'); if (a) rdvTrack('booksy'); });
+  });
+})();
+</script>
+<script>
   // FAQ: keep one open at a time for tidiness
   // ---- SMP preview tool ----
   // Sends the photo + choices to /api/generate (AI). If the AI isn't reachable, renders an on-device simulation instead.
@@ -831,10 +854,11 @@
           const j = await res.json();
           if (j && j.image) { after.src = j.image.startsWith('data:') ? j.image : 'data:image/png;base64,' + j.image; ok = true; mode = 'ai'; markUsed(); }
         } else if (res.status === 429) {
-          status.textContent = "T'as atteint la limite d'aperçus pour aujourd'hui.";
+          status.textContent = "T'as atteint la limite d'aperçus pour aujourd'hui."; window.rdvTrack && rdvTrack('limit');
         }
       } catch (e) {}
       if (!ok) { mode = 'sim'; renderSim(); }
+      window.rdvTrack && rdvTrack('generated', { h: mode });
       lineGroup.hidden = mode !== 'sim';
       result.hidden = false; setPos(50);
       go.textContent = 'Regénère mon aperçu';
@@ -951,6 +975,7 @@
         err.innerHTML = "Oups, ta demande a pas pu être envoyée. Réessaie dans une minute, ou <a href='" + BOOKSY + "' target='_blank' rel='noopener' style='color:inherit'>réserve sur Booksy</a>.";
         return;
       }
+      window.rdvTrack && rdvTrack('done', { h: $('bkProc').value });
       try { if (window.fbq) fbq('track', 'Schedule'); } catch (e) {}
       $('bkSummary').innerHTML = '<b>' + name.replace(/[<>&]/g, '') + '</b><br>' + when + '<br>' + proc + '<br>' + modeTxt;
       form.hidden = true; $('bkDone').hidden = false;

@@ -171,6 +171,8 @@ async function handleBook(request, env) {
   return json({ ok: true });
 }
 
+import { handleTrack, handleStats } from './stats.js';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -181,6 +183,15 @@ export default {
     if (url.pathname === '/api/generate') {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
       return handleGenerate(request, env);
+    }
+    if (url.pathname === '/api/track') {
+      if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
+      return handleTrack(request, env);
+    }
+    if (url.pathname === '/api/stats') {
+      const pw = request.headers.get('x-pw') || '';
+      if (!env.STATS_PASSWORD || pw.length !== env.STATS_PASSWORD.length || pw !== env.STATS_PASSWORD) return json({ error: 'unauthorized' }, 401);
+      return handleStats(url, env);
     }
     return env.ASSETS.fetch(request); // index.html, photos
   },
