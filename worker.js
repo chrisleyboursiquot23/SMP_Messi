@@ -135,12 +135,12 @@ async function handleBook(request, env) {
   const first = name.split(' ')[0];
   const en = b.lang === 'en';
   const smsBody = en
-    ? `Hi ${first}! It's Messi from RDV Barbershop. Your free SMP consultation is confirmed for ${clip(b.whenEn || when, 60)}` +
-      (b.mode === 'online' ? ', by video call. I\'ll send you the link right before.' : ' at 622 Rue Saint-Thomas, Longueuil.') +
-      " Can't make it? Just reply to this text."
-    : `Salut ${first}! C'est Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
-    (b.mode === 'online' ? ', par appel vidéo. Je t\'envoie le lien juste avant.' : ' au 622 Rue Saint-Thomas, Longueuil.') +
-    ' Un empêchement? Réponds juste à ce texto.';
+    ? `Hi ${first}, this is Messi from RDV Barbershop. Your free SMP consultation is confirmed for ${clip(b.whenEn || when, 60)}` +
+      (b.mode === 'online' ? ', by video call. I\'ll send you the link right before.' : ', at 622 Rue Saint-Thomas, Longueuil.') +
+      " If something comes up, just reply to this message."
+    : `Bonjour ${first}, ici Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
+    (b.mode === 'online' ? ', par appel vidéo. Je t\'enverrai le lien juste avant.' : ', au 622 Rue Saint-Thomas, Longueuil.') +
+    ' En cas d\'empêchement, réponds simplement à ce message.';
   const smsLink = `sms:+1${digits}?&body=${encodeURIComponent(smsBody)}`;
 
   const html = `
