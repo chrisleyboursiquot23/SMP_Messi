@@ -133,7 +133,12 @@ async function handleBook(request, env) {
 
   const phonePretty = `${digits.slice(0, 3)} ${digits.slice(3, 6)}-${digits.slice(6)}`;
   const first = name.split(' ')[0];
-  const smsBody = `Salut ${first}! C'est Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
+  const en = b.lang === 'en';
+  const smsBody = en
+    ? `Hi ${first}! It's Messi from RDV Barbershop. Your free SMP consultation is confirmed for ${clip(b.whenEn || when, 60)}` +
+      (b.mode === 'online' ? ', by video call. I\'ll send you the link right before.' : ' at 622 Rue Saint-Thomas, Longueuil.') +
+      " Can't make it? Just reply to this text."
+    : `Salut ${first}! C'est Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
     (b.mode === 'online' ? ', par appel vidéo. Je t\'envoie le lien juste avant.' : ' au 622 Rue Saint-Thomas, Longueuil.') +
     ' Un empêchement? Réponds juste à ce texto.';
   const smsLink = `sms:+1${digits}?&body=${encodeURIComponent(smsBody)}`;
@@ -147,6 +152,7 @@ async function handleBook(request, env) {
       <tr><td style="padding:8px 0;color:#777">Téléphone</td><td style="padding:8px 0"><a href="tel:+1${digits}">${phonePretty}</a></td></tr>
       <tr><td style="padding:8px 0;color:#777">Procédure</td><td style="padding:8px 0">${esc(procedure)}</td></tr>
       <tr><td style="padding:8px 0;color:#777">Type</td><td style="padding:8px 0">${esc(mode)}</td></tr>
+      <tr><td style="padding:8px 0;color:#777">Langue</td><td style="padding:8px 0">${en ? '<b>Anglais</b> (le texto est prêt en anglais)' : 'Français'}</td></tr>
     </table>
     <p style="margin:22px 0 8px"><a href="${esc(smsLink)}" style="display:inline-block;background:#FF7A1A;color:#1A1407;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:999px">Texter le client pour confirmer</a></p>
     <p style="margin:0 0 18px"><a href="tel:+1${digits}" style="color:#FF7A1A">ou appeler ${phonePretty}</a></p>
@@ -170,7 +176,7 @@ async function handleBook(request, env) {
   }
   try {
     const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
-    await saveLead(env, { call_when: when, name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct' });
+    await saveLead(env, { call_when: when, name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' });
   } catch (e) { console.log('saveLead error', e && e.message); }
   return json({ ok: true });
 }

@@ -131,7 +131,7 @@ function draw(d){
 
 // ---------- client list + Excel export ----------
 let LEADS = [];
-const COLS = [['day','Date de la demande'],['call_when','Rendez-vous'],['name','Nom'],['phone','Téléphone'],['procedure','Procédure voulue'],['mode','Type de consultation'],['preview','A fait un aperçu'],['src','Source']];
+const COLS = [['day','Date de la demande'],['call_when','Rendez-vous'],['name','Nom'],['phone','Téléphone'],['procedure','Procédure voulue'],['mode','Type de consultation'],['preview','A fait un aperçu'],['src','Source'],['lang','Langue']];
 function drawLeads(){
   $('xlsx').disabled = !LEADS.length;
   $('leads').innerHTML = '<tr><th>Nom</th><th>Téléphone</th><th>Ce qu\'il veut</th><th>Rendez-vous</th></tr>' + (LEADS.length ? LEADS.slice(0,50).map(l=>

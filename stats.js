@@ -52,13 +52,14 @@ export async function handleStats(url, env) {
 
 // ---------- Client list (bookings) ----------
 // One row per booking, used by the "Clients" table and the Excel export on /stats.html (STATS_PASSWORD).
-const LEAD_COLS = ['ts', 'day', 'call_when', 'name', 'phone', 'procedure', 'mode', 'preview', 'src'];
+const LEAD_COLS = ['ts', 'day', 'call_when', 'name', 'phone', 'procedure', 'mode', 'preview', 'src', 'lang'];
 let leadsReady = false;
 async function leadsDb(env) {
   if (!env.STATS) return null;
   if (!leadsReady) {
     await env.STATS.prepare(`CREATE TABLE IF NOT EXISTS leads (${LEAD_COLS.map(c => c + (c === 'ts' ? ' INTEGER' : ' TEXT')).join(', ')})`).run();
     await env.STATS.prepare('CREATE INDEX IF NOT EXISTS leads_day ON leads (day)').run();
+    try { await env.STATS.prepare('ALTER TABLE leads ADD COLUMN lang TEXT').run(); } catch (e) {} // added later; ignore if already there
     leadsReady = true;
   }
   return env.STATS;
