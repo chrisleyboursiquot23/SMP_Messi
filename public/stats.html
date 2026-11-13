@@ -44,6 +44,8 @@
   .legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-bottom:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .msg{color:var(--bad);font-size:14px;margin-top:10px}
+  #leads td{vertical-align:top}#leads a{color:var(--fg);white-space:nowrap}#leads .why{color:var(--muted);font-size:13px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--s2);color:var(--muted);margin-left:6px}.tag.hot{background:var(--gold);color:var(--on)}
   .empty{color:var(--muted);text-align:center;padding:20px 0}
   @media(max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:last-child{grid-column:span 2}.two{grid-template-columns:1fr}.fun{grid-template-columns:minmax(0,1fr) 46px 38px 50px;gap:8px 7px}.fun .lab{font-size:13px}table{font-size:13px}th,td{padding:8px 4px}}
   .tw{overflow-x:auto}
@@ -63,6 +65,9 @@
 
   <div id="dash" hidden>
     <div class="kpis" id="kpis" style="margin-top:6px"></div>
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Clients</h2><p class="hint">Chaque personne qui a demandé un rendez-vous, la plus récente en premier.</p></div>
+      <button class="btn" id="xlsx" style="padding:10px 16px;font-size:14px">Télécharger Excel</button></div>
+      <div class="tw"><table id="leads"></table></div></div>
     <div class="card"><h2>Parcours des visiteurs</h2><p class="hint">Nombre de visiteurs qui se sont rendus à chaque étape. La colonne de droite montre combien on perd par rapport à l'étape précédente : la plus grosse perte est en rouge.</p><div class="fun" id="fun"></div></div>
     <div class="card"><h2>Chaque jour</h2><div class="legend"><span><i style="background:#3A3833"></i>Visites</span><span><i style="background:var(--gold)"></i>Rendez-vous</span></div><div class="chart" id="chart"></div><div class="axis" id="axis"></div></div>
     <div class="card"><h2>D'où viennent les visiteurs</h2><p class="hint">Selon le lien utilisé (utm_source) ou le site d'où ils arrivent. « Direct » : lien tapé, ouvert depuis une app ou un message.</p><div class="tw"><table id="src"></table></div></div>
@@ -89,6 +94,7 @@ async function load(){
   if(r.status===401){ try{sessionStorage.removeItem('rdvpw')}catch(e){} $('login').hidden=false; $('dash').hidden=true; $('err').textContent='Mot de passe incorrect.'; return; }
   if(!r.ok){ $('login').hidden=false; $('err').textContent = r.status===503 ? "La base de statistiques n'est pas encore créée (STATS)." : 'Erreur '+r.status; return; }
   $('login').hidden=true; $('dash').hidden=false; draw(await r.json());
+  try{ const lr=await fetch('/api/leads?days=3650',{headers:{'x-pw':pw}}); if(lr.ok){ LEADS=(await lr.json()).leads||[]; drawLeads(); } }catch(e){}
 }
 
 function draw(d){
@@ -122,6 +128,56 @@ function draw(d){
     + `<tr><th>Aperçus</th><th class="r">Nombre</th><th></th></tr>`
     + `<tr><td>Faits par l'IA</td><td class="r">${gm.ai||0}</td><td></td></tr><tr><td>Simulation (IA indisponible)</td><td class="r">${gm.sim||0}</td><td></td></tr>`;
 }
+
+// ---------- client list + Excel export ----------
+let LEADS = [];
+const COLS = [['day','Date de la demande'],['call_when','Rendez-vous'],['name','Nom'],['phone','Téléphone'],['procedure','Procédure voulue'],['mode','Type de consultation'],['preview','A fait un aperçu'],['src','Source']];
+function drawLeads(){
+  $('xlsx').disabled = !LEADS.length;
+  $('leads').innerHTML = '<tr><th>Nom</th><th>Téléphone</th><th>Ce qu\'il veut</th><th>Rendez-vous</th></tr>' + (LEADS.length ? LEADS.slice(0,50).map(l=>
+    `<tr><td><b>${esc(l.name)}</b>${/^Oui/.test(l.preview)?'<span class="tag hot">APERÇU</span>':''}</td><td><a href="tel:${esc(String(l.phone).replace(/\D/g,''))}">${esc(l.phone)}</a></td>
+     <td class="why">${esc(l.procedure)} · ${/ligne/i.test(l.mode)?'en ligne':'au shop'}</td><td class="why">${esc(l.call_when)}</td></tr>`).join('')
+    + (LEADS.length>50?`<tr><td colspan="4" class="why">+ ${LEADS.length-50} autres dans le fichier Excel</td></tr>`:'')
+    : '<tr><td colspan="4" class="empty">Aucun rendez-vous pour l\'instant.</td></tr>');
+}
+// Minimal .xlsx writer (zip, no compression) so the file opens directly in Excel, Numbers or Google Sheets.
+function xlsxBlob(rows){
+  const x = v => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+  const colName = i => { let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; };
+  const widths = rows[0].map((_,c)=>Math.min(48,Math.max(10,...rows.map(r=>String(r[c]??'').length+2))));
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${
+    rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{ const ref=colName(ci)+(ri+1), st=ri?'':' s="1"';
+      return (ri && typeof v==='number') ? `<c r="${ref}"${st}><v>${v}</v></c>` : `<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${x(v)}</t></is></c>`; }).join('')}</row>`).join('')
+  }</sheetData><autoFilter ref="A1:${colName(rows[0].length-1)}${rows.length}"/></worksheet>`;
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Clients" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Clients!$A$1:$'+colName(rows[0].length-1)+'$'+rows.length+'</definedName></definedNames></workbook>',
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1A0D00"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFF7A1A"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+    'xl/worksheets/sheet1.xml': sheet,
+  };
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const crcT = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+  const crc32 = b => { let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c = crcT[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  const u16 = v => [v&255,(v>>8)&255], u32 = v => [v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  for (const [name, text] of Object.entries(files)) {
+    const nb = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+    const head = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nb.length), ...u16(0)];
+    parts.push(new Uint8Array(head), nb, data);
+    central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nb.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nb);
+    off += head.length + nb.length + data.length;
+  }
+  const cSize = central.reduce((a,b)=>a+b.length,0), n = Object.keys(files).length;
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(n), ...u16(n), ...u32(cSize), ...u32(off), ...u16(0)]);
+  return new Blob([...parts, ...central, end], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+$('xlsx').onclick = () => {
+  const num = () => false;
+  const rows = [COLS.map(c=>c[1]), ...LEADS.map(l => COLS.map(([k]) => num(k) && l[k] !== '' && !isNaN(+l[k]) ? +l[k] : (l[k] ?? '')))];
+  const a = document.createElement('a'); a.href = URL.createObjectURL(xlsxBlob(rows));
+  a.download = `RDV-SMP-clients-${new Date().toISOString().slice(0,10)}.xlsx`; document.body.appendChild(a); a.click(); a.remove();
+};
 
 $('go').onclick = () => { try{ sessionStorage.setItem('rdvpw',$('pw').value); }catch(e){} $('err').textContent=''; load(); };
 $('pw').onkeydown = e => { if(e.key==='Enter') $('go').click(); };

@@ -168,10 +168,14 @@ async function handleBook(request, env) {
     console.log('Resend error', res && res.status, res && await res.text().catch(() => ''));
     return json({ error: 'Could not send.' }, 502);
   }
+  try {
+    const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
+    await saveLead(env, { call_when: when, name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct' });
+  } catch (e) { console.log('saveLead error', e && e.message); }
   return json({ ok: true });
 }
 
-import { handleTrack, handleStats } from './stats.js';
+import { handleTrack, handleStats, saveLead, handleLeads } from './stats.js';
 
 export default {
   async fetch(request, env) {
@@ -188,10 +192,10 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
       return handleTrack(request, env);
     }
-    if (url.pathname === '/api/stats') {
+    if (url.pathname === '/api/stats' || url.pathname === '/api/leads') {
       const pw = request.headers.get('x-pw') || '';
       if (!env.STATS_PASSWORD || pw.length !== env.STATS_PASSWORD.length || pw !== env.STATS_PASSWORD) return json({ error: 'unauthorized' }, 401);
-      return handleStats(url, env);
+      return url.pathname === '/api/stats' ? handleStats(url, env) : handleLeads(url, env);
     }
     return env.ASSETS.fetch(request); // index.html, photos
   },

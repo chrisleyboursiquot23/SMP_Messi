@@ -859,6 +859,7 @@
       } catch (e) {}
       if (!ok) { mode = 'sim'; renderSim(); }
       window.rdvTrack && rdvTrack('generated', { h: mode });
+      window.rdvPreview = (mode === 'ai' ? 'Oui (IA)' : 'Oui (simulation)') + ' · ' + state.areas.map(a => ({ hairline: 'hairline', crown: 'couronne', temples: 'tempes', full: 'toute la tête', density: 'densité' }[a] || a)).join(', ');
       lineGroup.hidden = mode !== 'sim';
       result.hidden = false; setPos(50);
       go.textContent = 'Regénère mon aperçu';
@@ -967,6 +968,7 @@
       const modeTxt = st.mode === 'inperson' ? 'Au shop · 622 Rue Saint-Thomas, Longueuil' : 'En ligne · appel vidéo';
       const btn = $('bkSubmit'); btn.disabled = true; btn.textContent = 'Envoi en cours…';
       const payload = { name, phone, procedure: proc, mode: st.mode, date: st.day, time: fmtTime(st.time), when,
+                        preview: window.rdvPreview || '', src: (() => { try { return sessionStorage.getItem('rdvSrc') || ''; } catch (e) { return ''; } })(),
                         website: ($('bkHp') || {}).value || '' };
       const ok = await fetch('/api/book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
         .then(r => r.ok).catch(() => false);

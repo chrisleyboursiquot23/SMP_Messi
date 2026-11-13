@@ -49,3 +49,32 @@ export async function handleStats(url, env) {
   ]);
   return json({ from, days: n, funnel, sources, daily, devices, genders, langs, heard });
 }
+
+// ---------- Client list (bookings) ----------
+// One row per booking, used by the "Clients" table and the Excel export on /stats.html (STATS_PASSWORD).
+const LEAD_COLS = ['ts', 'day', 'call_when', 'name', 'phone', 'procedure', 'mode', 'preview', 'src'];
+let leadsReady = false;
+async function leadsDb(env) {
+  if (!env.STATS) return null;
+  if (!leadsReady) {
+    await env.STATS.prepare(`CREATE TABLE IF NOT EXISTS leads (${LEAD_COLS.map(c => c + (c === 'ts' ? ' INTEGER' : ' TEXT')).join(', ')})`).run();
+    await env.STATS.prepare('CREATE INDEX IF NOT EXISTS leads_day ON leads (day)').run();
+    leadsReady = true;
+  }
+  return env.STATS;
+}
+export async function saveLead(env, lead) {
+  const d = await leadsDb(env); if (!d) return;
+  const row = { ...lead, ts: Date.now(), day: todayMtl() };
+  await d.prepare(`INSERT INTO leads (${LEAD_COLS.join(', ')}) VALUES (${LEAD_COLS.map(() => '?').join(', ')})`)
+    .bind(...LEAD_COLS.map(c => (c === 'ts' ? row.ts : String(row[c] ?? '')))).run();
+}
+// GET /api/leads?days=90  (header x-pw)
+export async function handleLeads(url, env) {
+  const d = await leadsDb(env);
+  if (!d) return json({ error: 'no_db' }, 503);
+  const n = Math.min(Math.max(parseInt(url.searchParams.get('days')) || 90, 1), 3650);
+  const from = addDays(todayMtl(), -(n - 1));
+  const r = await d.prepare('SELECT * FROM leads WHERE day >= ? ORDER BY ts DESC').bind(from).all();
+  return json({ from, leads: r.results });
+}
