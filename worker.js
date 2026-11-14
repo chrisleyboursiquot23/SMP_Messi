@@ -115,7 +115,7 @@ async function handleGenerate(request, env) {
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clip = (s, n) => String(s || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 
-async function handleBook(request, env) {
+async function handleBook(request, env, ctx) {
   if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return json({ error: 'Server not configured (RESEND_API_KEY / NOTIFY_EMAIL).' }, 500);
   let b;
   try { b = await request.json(); } catch { return json({ error: 'Bad request.' }, 400); }
@@ -178,17 +178,30 @@ async function handleBook(request, env) {
     const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
     await saveLead(env, { call_when: when, name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' });
   } catch (e) { console.log('saveLead error', e && e.message); }
+  // Copy to the Google Sheet (Rendez-vous tab), without slowing down the client's confirmation
+  const SRC2 = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
+  const job = pushSheet(env, { type: 'lead', name, phone: phonePretty, when, mode, procedure, preview: clip(b.preview, 80) || 'Non', src: SRC2[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' });
+  if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
   return json({ ok: true });
+}
+
+// Sends one row to the Google Sheet through its Apps Script web app (secrets SHEET_URL + SHEET_SECRET in Cloudflare).
+export async function pushSheet(env, row) {
+  if (!env.SHEET_URL || !env.SHEET_SECRET) return;
+  try {
+    const r = await fetch(env.SHEET_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...row, secret: env.SHEET_SECRET }) });
+    if (!r.ok) console.log('sheet error', r.status);
+  } catch (e) { console.log('sheet error', e && e.message); }
 }
 
 import { handleTrack, handleStats, saveLead, handleLeads } from './stats.js';
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/api/book') {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
-      return handleBook(request, env);
+      return handleBook(request, env, ctx);
     }
     if (url.pathname === '/api/generate') {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
