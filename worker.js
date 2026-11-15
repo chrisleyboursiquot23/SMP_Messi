@@ -142,7 +142,8 @@ async function handleBook(request, env, ctx) {
     : `Bonjour ${first}, ici Messi de RDV Barbershop. Ta consultation SMP gratuite est confirmée ${when}` +
     (b.mode === 'online' ? ', par appel vidéo. Je t\'enverrai le lien juste avant.' : ', au 622 Rue Saint-Thomas, Longueuil.') +
     ' En cas d\'empêchement, réponds simplement à ce message.';
-  const smsLink = `sms:+1${digits}?&body=${encodeURIComponent(smsBody)}`;
+  // Gmail strips sms: links, so the button opens a page on our site that launches Messages
+  const smsLink = `${new URL(request.url).origin}/api/texto?n=${digits}&b=${encodeURIComponent(smsBody).replace(/'/g, '%27')}`;
 
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#141416">
@@ -183,6 +184,22 @@ async function handleBook(request, env, ctx) {
 }
 
 // Sends one row to the Google Sheet through its Apps Script web app (secrets SHEET_URL + SHEET_SECRET in Cloudflare).
+// Small page that opens the phone's Messages app with the confirmation text ready (email apps block sms: links)
+function textoPage(url) {
+  const n = (url.searchParams.get('n') || '').replace(/\D/g, '').slice(-10), body = (url.searchParams.get('b') || '').slice(0, 600);
+  const e = x => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const sms = `sms:+1${n}?&body=${encodeURIComponent(body)}`, pretty = n.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2-$3');
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Texter ${e(pretty)}</title>
+<style>body{margin:0;background:#000;color:#fff;font:16px/1.5 system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center}main{max-width:420px;padding:24px;text-align:center}
+a.b,button{display:block;width:100%;box-sizing:border-box;border:0;border-radius:14px;background:#FF7A1A;color:#1A1407;font:800 16px system-ui;padding:16px;text-decoration:none;margin-top:14px;cursor:pointer}
+button{background:none;color:#fff;border:1.5px solid #444}p.m{background:#1b1b1b;border-radius:16px;padding:14px;text-align:left;color:#ddd;white-space:pre-line;margin-top:18px}small{color:#888}</style></head>
+<body><main><h2 style="margin:0">Texter ${e(pretty)}</h2><p class="m" id="m">${e(body)}</p>
+<a class="b" href="${e(sms)}">Ouvrir Messages</a><button id="c">Copier le texte</button><a class="b" style="background:none;color:#FF7A1A" href="tel:+1${n}">Appeler ${e(pretty)}</a>
+<small>Si Messages ne s'ouvre pas, copie le texte et envoie-le au ${e(pretty)}.</small></main>
+<script>document.getElementById('c').onclick=function(){navigator.clipboard.writeText(document.getElementById('m').textContent).then(()=>{this.textContent='Texte copié ✓'})};setTimeout(function(){location.href=${JSON.stringify(sms)}},400);</script></body></html>`;
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+}
+
 export async function pushSheet(env, row) {
   if (!env.SHEET_URL || !env.SHEET_SECRET) return;
   try {
@@ -196,6 +213,7 @@ import { handleTrack, handleStats, saveLead, handleLeads } from './stats.js';
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/texto') return textoPage(url);
     if (url.pathname === '/api/book') {
       if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
       return handleBook(request, env, ctx);
