@@ -111,7 +111,8 @@ async function handleGenerate(request, env) {
 }
 
 // ---- Booking requests: POST /api/book -> email alert (via Resend) ----
-// Secrets to set in Cloudflare: RESEND_API_KEY, NOTIFY_EMAIL (where alerts go).
+// Secrets to set in Cloudflare: RESEND_API_KEY, NOTIFY_EMAIL (where alerts go, several allowed: a@x.com,b@y.com).
+const MESSI_EMAIL = 'rdvbarbershop@gmail.com'; // Messi always gets the booking email
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clip = (s, n) => String(s || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 
@@ -159,29 +160,25 @@ async function handleBook(request, env, ctx) {
     <p style="font-size:13px;color:#777;border-top:1px solid #eee;padding-top:12px">Texto prêt à envoyer :<br><i>${esc(smsBody)}</i></p>
   </div>`;
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from: env.FROM_EMAIL || 'RDV SMP <onboarding@resend.dev>',
-      to: [env.NOTIFY_EMAIL],
-      subject: `Nouveau RDV SMP : ${name} — ${when}`,
-      html,
-    }),
-  }).catch(() => null);
-
-  if (!res || !res.ok) {
-    console.log('Resend error', res && res.status, res && await res.text().catch(() => ''));
-    return json({ error: 'Could not send.' }, 502);
-  }
-  try {
-    const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
-    await saveLead(env, { call_when: when, name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' });
-  } catch (e) { console.log('saveLead error', e && e.message); }
-  // Copy to the Google Sheet (Rendez-vous tab), without slowing down the client's confirmation
-  const SRC2 = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
-  const job = pushSheet(env, { type: 'lead', name, phone: phonePretty, when, mode, procedure, preview: clip(b.preview, 80) || 'Non', src: SRC2[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' });
+  // Keep the lead first, so it is never lost even if an email fails
+  const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
+  const leadRow = { name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' };
+  try { await saveLead(env, { call_when: when, ...leadRow }); } catch (e) { console.log('saveLead error', e && e.message); }
+  const job = pushSheet(env, { type: 'lead', when, ...leadRow }); // Google Sheet (Rendez-vous tab)
   if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+
+  // One email per recipient: NOTIFY_EMAIL (can hold several, separated by commas) + Messi's shop address
+  const to = [...new Set(String(env.NOTIFY_EMAIL || '').split(',').concat(MESSI_EMAIL).map(x => x.trim().toLowerCase()).filter(x => x.includes('@')))];
+  const sent = await Promise.all(to.map(async addr => {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: env.FROM_EMAIL || 'RDV SMP <onboarding@resend.dev>', to: [addr], subject: `Nouveau RDV SMP : ${name} — ${when}`, html }),
+    }).catch(() => null);
+    if (!r || !r.ok) console.log('Resend error', addr, r && r.status, r && await r.text().catch(() => ''));
+    return !!(r && r.ok);
+  }));
+  if (!sent.some(Boolean)) return json({ error: 'Could not send.' }, 502);
   return json({ ok: true });
 }
 
@@ -216,6 +213,14 @@ export default {
       if (!env.STATS_PASSWORD || pw.length !== env.STATS_PASSWORD.length || pw !== env.STATS_PASSWORD) return json({ error: 'unauthorized' }, 401);
       return url.pathname === '/api/stats' ? handleStats(url, env) : handleLeads(url, env);
     }
-    return env.ASSETS.fetch(request); // index.html, photos
+    const res = await env.ASSETS.fetch(request); // index.html, photos
+    // Link previews (Facebook, iMessage, WhatsApp) need absolute URLs: fill them in from the current domain
+    if ((res.headers.get('content-type') || '').includes('text/html')) {
+      return new HTMLRewriter()
+        .on('meta[property="og:image"]', { element: e => e.setAttribute('content', url.origin + '/img/og.jpg') })
+        .on('meta[property="og:url"]', { element: e => e.setAttribute('content', url.origin + url.pathname) })
+        .transform(res);
+    }
+    return res;
   },
 };

@@ -5,7 +5,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/", "/index.html"]
   },
   // Anonymous visitor stats (dashboard at /stats.html). Created automatically on deploy.
   "d1_databases": [{ "binding": "STATS", "database_name": "rdv-smp-stats" }]
