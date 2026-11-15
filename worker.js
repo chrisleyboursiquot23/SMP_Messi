@@ -125,10 +125,11 @@ async function handleBook(request, env, ctx) {
   const name = clip(b.name, 80);
   let digits = String(b.phone || '').replace(/\D/g, '');
   if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+  const email = clip(b.email, 120).toLowerCase();
   const procedure = clip(b.procedure, 80);
   const mode = b.mode === 'online' ? 'En ligne (appel vidéo)' : 'Au shop (en personne)';
   const when = clip(b.when, 60);
-  if (name.split(' ').length < 2 || digits.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || '')) || !when) {
+  if (name.split(' ').length < 2 || digits.length !== 10 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || '')) || !when) {
     return json({ error: 'Missing or invalid fields.' }, 400);
   }
 
@@ -152,6 +153,7 @@ async function handleBook(request, env, ctx) {
     <table style="width:100%;border-collapse:collapse;font-size:15px">
       <tr><td style="padding:8px 0;color:#777;width:110px">Quand</td><td style="padding:8px 0"><b>${esc(when)}</b></td></tr>
       <tr><td style="padding:8px 0;color:#777">Téléphone</td><td style="padding:8px 0"><a href="tel:+1${digits}">${phonePretty}</a></td></tr>
+      <tr><td style="padding:8px 0;color:#777">Courriel</td><td style="padding:8px 0"><a href="mailto:${esc(email)}">${esc(email)}</a></td></tr>
       <tr><td style="padding:8px 0;color:#777">Procédure</td><td style="padding:8px 0">${esc(procedure)}</td></tr>
       <tr><td style="padding:8px 0;color:#777">Type</td><td style="padding:8px 0">${esc(mode)}</td></tr>
       <tr><td style="padding:8px 0;color:#777">Langue</td><td style="padding:8px 0">${en ? '<b>Anglais</b> (le texto est prêt en anglais)' : 'Français'}</td></tr>
@@ -163,7 +165,7 @@ async function handleBook(request, env, ctx) {
 
   // Keep the lead first, so it is never lost even if an email fails
   const SRC = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', google: 'Google', youtube: 'YouTube', direct: 'Direct', other: 'Autre site' };
-  const leadRow = { name, phone: phonePretty, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' };
+  const leadRow = { name, phone: phonePretty, email, procedure, mode, preview: clip(b.preview, 80) || 'Non', src: SRC[b.src] || 'Direct', lang: en ? 'Anglais' : 'Français' };
   try { await saveLead(env, { call_when: when, ...leadRow }); } catch (e) { console.log('saveLead error', e && e.message); }
   const job = pushSheet(env, { type: 'lead', when, ...leadRow }); // Google Sheet (Rendez-vous tab)
   if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
