@@ -324,6 +324,45 @@
   </div>
 </section>
 
+<!-- BOOKING -->
+<section class="book" id="reserver">
+  <div class="wrap">
+    <div class="c"><div class="eb">Étape 2 de 2</div>
+      <h2>Réserve ta consultation <span class="hl">gratuite</span></h2>
+      <p class="lead">Au moins 30 minutes, sans pression. Les consultations ont lieu le lundi, de 11 h à 16 h : choisis ton moment et je te confirme le tout par texto.</p></div>
+    <div class="bk">
+      <div id="bkForm">
+        <label class="l">Type de consultation</label>
+        <div class="mode" id="mode">
+          <button type="button" class="mb on" data-v="inperson"><b>Au shop</b><span>622 Rue Saint-Thomas, Longueuil</span><em>Recommandé</em></button>
+          <button type="button" class="mb" data-v="online"><b>En ligne</b><span>Appel vidéo de 30 min et plus</span></button>
+        </div>
+        <p class="tip" id="tip">En personne, Messi peut examiner ton cuir chevelu de près et te donner un prix exact.</p>
+        <form id="f" novalidate>
+          <div><label class="l" for="nm">Nom complet</label><input id="nm" type="text" autocomplete="name" placeholder="Ex. : Marc Tremblay"></div>
+          <div><label class="l" for="ph">Téléphone</label><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="514 555-1234"></div>
+          <div><label class="l" for="em">Courriel</label><input id="em" type="email" inputmode="email" autocomplete="email" placeholder="ton@courriel.com"></div>
+          <div><label class="l" for="pr">Procédure désirée</label>
+            <select id="pr"><option value="hairline">Hairline (golfes)</option><option value="crown">Couronne</option><option value="temples">Tempes (côtés)</option><option value="full">Toute la tête</option><option value="density">Densité (garder mes cheveux)</option><option value="correction">Retouche / correction d'un ancien SMP</option><option value="unsure" selected>Je ne sais pas encore, on en discutera en consultation</option></select></div>
+          <div><label class="l">Date</label><div class="days" id="days"></div></div>
+          <div><label class="l">Heure</label><div class="times" id="times"><p class="empty">Choisis une date d'abord.</p></div></div>
+          <input class="hp" id="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <label class="consent"><input type="checkbox" id="ok"><span>J'accepte d'être contacté par texto ou par téléphone au sujet de mon rendez-vous et que mes renseignements soient traités selon la <a href="/confidentialite.html" target="_blank" style="color:var(--acc)">politique de confidentialité</a>.</span></label>
+          <p class="err" id="err"></p>
+          <button class="btn block" type="submit" id="sub">Confirmer mon rendez-vous</button>
+        </form>
+      </div>
+      <div class="done" id="done" hidden>
+        <div class="ok"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h3>C'est réservé!</h3>
+        <p id="sum"></p>
+        <p>Messi te confirmera ton rendez-vous par texto. En cas d'empêchement, réponds simplement à son message pour changer l'heure.</p>
+      </div>
+      <p class="alt"><span>Tu préfères Booksy?</span> <a href="https://booksy.com/en-ca/instant-experiences/widget/21150" target="_blank" rel="noopener" id="booksy">Réserve sur Booksy</a></p>
+    </div>
+  </div>
+</section>
+
 <!-- COMPARE -->
 <section>
   <div class="wrap">
@@ -424,44 +463,6 @@
   </div>
 </section>
 
-<!-- BOOKING -->
-<section class="book" id="reserver">
-  <div class="wrap">
-    <div class="c"><div class="eb">Étape 2 de 2</div>
-      <h2>Réserve ta consultation <span class="hl">gratuite</span></h2>
-      <p class="lead">Au moins 30 minutes, sans pression. Les consultations ont lieu le lundi, de 11 h à 16 h : choisis ton moment et je te confirme le tout par texto.</p></div>
-    <div class="bk">
-      <div id="bkForm">
-        <label class="l">Type de consultation</label>
-        <div class="mode" id="mode">
-          <button type="button" class="mb on" data-v="inperson"><b>Au shop</b><span>622 Rue Saint-Thomas, Longueuil</span><em>Recommandé</em></button>
-          <button type="button" class="mb" data-v="online"><b>En ligne</b><span>Appel vidéo de 30 min et plus</span></button>
-        </div>
-        <p class="tip" id="tip">En personne, Messi peut examiner ton cuir chevelu de près et te donner un prix exact.</p>
-        <form id="f" novalidate>
-          <div><label class="l" for="nm">Nom complet</label><input id="nm" type="text" autocomplete="name" placeholder="Ex. : Marc Tremblay"></div>
-          <div><label class="l" for="ph">Téléphone</label><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="514 555-1234"></div>
-          <div><label class="l" for="em">Courriel</label><input id="em" type="email" inputmode="email" autocomplete="email" placeholder="ton@courriel.com"></div>
-          <div><label class="l" for="pr">Procédure désirée</label>
-            <select id="pr"><option value="hairline">Hairline (golfes)</option><option value="crown">Couronne</option><option value="temples">Tempes (côtés)</option><option value="full">Toute la tête</option><option value="density">Densité (garder mes cheveux)</option><option value="correction">Retouche / correction d'un ancien SMP</option><option value="unsure" selected>Je ne sais pas encore, on en discutera en consultation</option></select></div>
-          <div><label class="l">Date</label><div class="days" id="days"></div></div>
-          <div><label class="l">Heure</label><div class="times" id="times"><p class="empty">Choisis une date d'abord.</p></div></div>
-          <input class="hp" id="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <label class="consent"><input type="checkbox" id="ok"><span>J'accepte d'être contacté par texto ou par téléphone au sujet de mon rendez-vous et que mes renseignements soient traités selon la <a href="/confidentialite.html" target="_blank" style="color:var(--acc)">politique de confidentialité</a>.</span></label>
-          <p class="err" id="err"></p>
-          <button class="btn block" type="submit" id="sub">Confirmer mon rendez-vous</button>
-        </form>
-      </div>
-      <div class="done" id="done" hidden>
-        <div class="ok"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg></div>
-        <h3>C'est réservé!</h3>
-        <p id="sum"></p>
-        <p>Messi te confirmera ton rendez-vous par texto. En cas d'empêchement, réponds simplement à son message pour changer l'heure.</p>
-      </div>
-      <p class="alt"><span>Tu préfères Booksy?</span> <a href="https://booksy.com/en-ca/instant-experiences/widget/21150" target="_blank" rel="noopener" id="booksy">Réserve sur Booksy</a></p>
-    </div>
-  </div>
-</section>
 
 <footer>
   <div class="wrap">
